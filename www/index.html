@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RotaFácil - Otimizador Estilo Circuit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MapLibre GL CSS -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- SheetJS (XLSX) para leitura de Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        input { font-size: 16px !important; }
+        #listaDestinos::-webkit-scrollbar { width: 6px; }
+        #listaDestinos::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+        #listaDestinos::-webkit-scrollbar-track { background: transparent; }
+        
+        #map { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+
+        @keyframes pulse-mic {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        .escutando { animation: pulse-mic 1.5s infinite; background-color: #dc2626 !important; color: white !important; }
+
+        .entregador-marker {
+            width: 24px;
+            height: 24px;
+            background: transparent;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #sidebar { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+        #sidebar.open { transform: translateX(0); }
+        #sidebarOverlay { opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; }
+        #sidebarOverlay.open { opacity: 1; pointer-events: auto; }
+
+        .floating-card {
+            background: rgba(30, 41, 59, 0.92);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease-in-out;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f1f5f9;
+        }
+
+        #painelConteudo {
+            max-height: 500px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            opacity: 1;
+        }
+
+        #painelConteudo.colapsado {
+            max-height: 0px;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .custom-marker {
+            background-color: #2563eb;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 11px;
+            border: 2px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        .custom-marker.mesmo-endereco {
+            background-color: #dc2626 !important;
+        }
+
+        .custom-marker.entregue {
+            background-color: #16a34a !important;
+        }
+        .custom-marker.insucesso {
+            background-color: #f97316 !important;
+        }
+
+        #modalPagamento { z-index: 999999 !important; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans antialiased relative overflow-hidden">
+
+    <div id="map"></div>
+    <div id="sidebarOverlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/60 z-40"></div>
+
+    <!-- MENU LATERAL -->
+    <aside id="sidebar" class="fixed top-0 left-0 w-72 h-full bg-slate-900 border-r border-slate-800 text-slate-200 z-50 p-5 flex flex-col justify-between shadow-2xl">
+        <div class="space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-950 border border-blue-800 p-2 rounded-xl">
+                        <i class="fa-solid fa-gauge text-blue-400"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-slate-100">Painel do Utilizador</h2>
+                </div>
+                <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-200 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700 space-y-2">
+                <div class="text-xs text-slate-400 font-semibold uppercase">Estado da Assinatura</div>
+                <div id="statusPlanoMenu" class="text-sm font-bold text-blue-400">A carregar...</div>
+                <div class="text-xs text-slate-400 pt-1 border-t border-slate-700/60 flex items-center justify-between">
+                    <span>Expira em:</span>
+                    <strong id="cronometroDisplay" class="font-mono text-blue-300 text-xs">A calcular...</strong>
+                </div>
+                <div class="text-xs text-slate-400 pt-1 flex items-center justify-between">
+                    <span>O seu ID:</span>
+                    <div class="flex items-center gap-1.5">
+                        <span id="menuDeviceId" class="text-blue-400 font-mono text-[11px]">...</span>
+                        <button onclick="copiarMeuId()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-1.5 py-0.5 rounded text-[10px] font-bold transition-all" title="Copiar ID"><i class="fa-solid fa-copy"></i> Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="space-y-2">
+                <a href="#" onclick="toggleMenu();" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-950/60 text-blue-400 font-medium text-sm transition-all border border-blue-900/50"><i class="fa-solid fa-route w-5"></i> Gerir Rotas</a>
+                <a href="#" onclick="iniciarPagamentoPix(); toggleMenu();" class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-amber-400 hover:bg-amber-950/40 font-bold text-sm transition-all border border-amber-900/50"><i class="fa-solid fa-qrcode w-5"></i> Pagar Pix (R$ 20,00)</a>
+                
+                <a href="/downloads/cicuite.apk" download="cicuite.apk" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 font-bold text-sm transition-all border border-emerald-900/50 shadow-sm mt-2">
+                    <img src="assets/icon.png" alt="App" class="w-5 h-5 object-contain">
+                    <span>Baixar App Android</span>
+                </a>
+            </nav>
+        </div>
+        <div class="border-t border-slate-800 pt-4 text-xs text-slate-500 text-center">RotaFácil &bull; v2.5 Logística</div>
+    </aside>
+
+    <!-- MODAL PIX REAL -->
+    <div id="modalPagamento" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[999999] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative text-center text-slate-100">
+            <button onclick="fecharModalPagamento()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <div class="space-y-1">
+                <h3 class="text-lg font-bold text-slate-100">Pix - R$ 20,00</h3>
+                <p class="text-xs text-slate-400">Faça a leitura do QR Code ou copie o código abaixo.</p>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl inline-block">
+                <img id="imgQrCode" src="" alt="A gerar QR Code..." class="w-44 h-44 mx-auto">
+            </div>
+
+            <div class="space-y-2 text-left">
+                <label class="text-[11px] font-bold text-slate-400 uppercase">Pix Copia e Cola</label>
+                <div class="flex gap-2">
+                    <input type="text" id="pixCopiaCola" readonly class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 w-full font-mono">
+                    <button onclick="copiarPix()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-xl text-xs"><i class="fa-solid fa-copy"></i></button>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 flex flex-col items-center justify-center gap-2 text-xs text-amber-400 font-medium">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-spinner animate-spin" id="spinnerAguardando"></i>
+                    <span id="statusAguardando">A aguardar confirmação do pagamento...</span>
+                </div>
+                <button onclick="verificarStatusPagamentoManual()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md w-full">Já fiz o pagamento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOPO FLUTUANTE -->
+    <header class="fixed top-3 left-3 right-3 z-30 max-w-md mx-auto floating-card rounded-2xl p-3 shadow-lg flex items-center gap-2">
+        <button onclick="toggleMenu()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all border border-slate-700"><i class="fa-solid fa-bars"></i></button>
+        
+        <div class="flex-grow relative">
+            <input type="text" id="destinoInput" placeholder="Adicionar ou buscar paradas..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500" onkeypress="if(event.key === 'Enter') adicionarDestino()">
+        </div>
+
+        <button onclick="ouvirVoz('destinoInput', this)" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 w-10 h-10 rounded-xl flex items-center justify-center shrink-0"><i class="fa-solid fa-microphone text-xs"></i></button>
+        <button onclick="adicionarDestino()" class="bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md"><i class="fa-solid fa-plus text-xs"></i></button>
+    </header>
+
+    <!-- TELA DE BLOQUEIO -->
+    <div id="telaBloqueio" class="hidden fixed inset-0 z-50 bg-slate-900 flex flex-col items-center justify-center text-center p-6 space-y-4 text-slate-100">
+        <div class="text-red-500 text-6xl"><i class="fa-solid fa-hourglass-end"></i></div>
+        <h2 class="text-xl font-bold text-slate-100">A sua licença expirou!</h2>
+        <p class="text-sm text-slate-400 max-w-xs">Faça o pagamento via Pix de R$ 20,00 para renovar o acesso por 30 dias.</p>
+        
+        <div class="bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl text-xs flex items-center gap-2">
+            <span class="text-slate-400 font-semibold">O seu ID:</span>
+            <span id="bloqueioDeviceId" class="text-blue-400 font-mono text-xs">...</span>
+            <button onclick="copiarIdBloqueio()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded text-[10px] font-bold transition-all"><i class="fa-solid fa-copy"></i> Copiar</button>
+        </div>
+
+        <button onclick="iniciarPagamentoPix()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl text-xs shadow-md">Pagar Pix Agora</button>
+    </div>
+
+    <!-- PAINEL FLUTUANTE INFERIOR -->
+    <div class="fixed bottom-0 left-0 right-0 z-30 p-3 flex justify-center pointer-events-none">
+        <div class="w-full max-w-md floating-card rounded-3xl p-4 shadow-2xl space-y-3 pointer-events-auto relative">
+            
+            <div class="absolute -top-3.5 left-1/2 transform -translate-x-1/2">
+                <button onclick="togglePainelRota()" id="btnRetatil" class="bg-slate-800 border border-slate-700 text-slate-300 hover:text-blue-400 w-8 h-7 rounded-full shadow-md flex items-center justify-center transition-all text-xs" title="Minimizar / Expandir Painel">
+                    <i id="iconeSeta" class="fa-solid fa-chevron-up"></i>
+                </button>
+            </div>
+
+            <div id="painelConteudo" class="space-y-3 pt-1">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
+                    <div>
+                        <span class="font-black text-slate-100 text-sm">Painel de Rota</span>
+                        <div class="text-[11px] text-slate-400"><span id="contadorParadas">0 Paradas</span> &bull; Distância: <strong id="distanciaTotal" class="text-slate-300">0.0 km</strong></div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="limparTudo()" class="text-red-400 hover:text-red-300 p-2 text-xs font-semibold flex items-center gap-1"><i class="fa-solid fa-trash"></i> Limpar</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="navegarProximaParada()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"><i class="fa-solid fa-location-arrow"></i> Começar</button>
+                    <button onclick="abrirWaze()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition-all"><i class="fa-brands fa-waze"></i> Waze</button>
+                    <button onclick="otimizarRota()" id="btnOtimizar" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold py-2.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-md transition-all">
+                        <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i><span id="textOtimizar">Otimizar</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2 items-center bg-slate-800/80 p-2 rounded-xl border border-slate-700">
+                    <button onclick="usarLocalizacaoAtual()" id="btnGps" class="text-blue-400 hover:text-blue-300 px-2 py-1 text-xs font-bold flex items-center gap-1"><i class="fa-solid fa-crosshairs"></i> GPS</button>
+                    <input type="text" id="origemInput" placeholder="Sua localização atual..." class="flex-grow bg-transparent text-xs text-slate-200 outline-none placeholder:text-slate-500">
+                    
+                    <label for="fileImport" class="cursor-pointer bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-sm">
+                        <i class="fa-solid fa-file-arrow-up"></i> Excel
+                    </label>
+                    <input type="file" id="fileImport" name="arquivo" accept="image/*,application/pdf,.xlsx,.xls,.csv" class="hidden" onchange="importarArquivoEnderecos(event)">
+                </div>
+
+                <!-- MOSTRADOR DE MOVIMENTOS DO CARRO NO DASHBOARD -->
+                <div class="flex items-center justify-between bg-blue-950/60 border border-blue-900/50 px-3 py-1.5 rounded-xl text-[11px] text-blue-300 font-medium">
+                    <span>Movimentos do carro:</span>
+                    <strong id="contadorMovimentos" class="font-mono text-blue-400">0</strong>
+                </div>
+
+                <div class="space-y-1.5">
+                    <div class="text-[11px] text-slate-400 font-bold uppercase flex justify-between px-1">
+                        <span>Sequência de Entregas</span>
+                    </div>
+                    <div id="listaDestinos" class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MapLibre GL JS -->
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script>
+        let map;
+        let markersList = [];
+        let markerEntregador = null; 
+        let watchId = null;
+        let primeiraCentralizacaoGPS = false;
+        let contadorMovimentosCarro = 0; 
+        let ultimoTempoBuscaRua = 0;
+        let destinos = JSON.parse(localStorage.getItem('rotaFacilDestinos')) || [];
+        let tempoRestanteMsGlobal = 0;
+        let intervaloVerificacaoPix = null;
+        let deviceId = localStorage.getItem('rotaFacilDeviceId');
+        if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substring(2, 15); localStorage.setItem('rotaFacilDeviceId', deviceId); }
+
+        let rotaGeoJsonSourceId = 'rota-geojson-source';
+        let rotaLayerId = 'rota-layer';
+
+        window.onload = function() {
+            document.getElementById('menuDeviceId').innerText = deviceId;
+            document.getElementById('bloqueioDeviceId').innerText = deviceId;
+            verificarLicenca();
+            atualizarLista();
+            inicializarMapaMapLibre();
+            
+            const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+            if (savedPaymentId) {
+                abrirModalPagamento();
+                document.getElementById('statusAguardando').innerText = "A verificar pagamento pendente...";
+                intervaloVerificacaoPix = setInterval(() => { verificarStatusPagamento(savedPaymentId); }, 4000);
+            }
+
+            setInterval(() => {
+                if (tempoRestanteMsGlobal > 0) { tempoRestanteMsGlobal -= 1000; exibirCronômetro(tempoRestanteMsGlobal); }
+            }, 1000);
+        };
+
+        document.addEventListener("visibilitychange", function() {
+            if (!document.hidden) {
+                const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+                if (savedPaymentId) {
+                    verificarStatusPagamento(savedPaymentId);
+                }
+            }
+        });
+
+        function togglePainelRota() {
+            const conteudo = document.getElementById('painelConteudo');
+            const icone = document.getElementById('iconeSeta');
+            conteudo.classList.toggle('colapsado');
+            if (conteudo.classList.contains('colapsado')) {
+                icone.classList.remove('fa-chevron-up');
+                icone.classList.add('fa-chevron-down');
+            } else {
+                icone.classList.remove('fa-chevron-down');
+                icone.classList.add('fa-chevron-up');
+            }
+        }
+
+        function copiarMeuId() {
+            const idText = document.getElementById('menuDeviceId').innerText;
+            navigator.clipboard.writeText(idText).then(() => {
+                alert("📋 ID copiado para a área de transferência!");
+            });
+        }
+
+        function copiarIdBloqueio() {
+            const idText = document.getElementById('bloqueioDeviceId').innerText;
+            navigator.clipboard.writeText(idText).then(() => {
+                alert("📋 ID copiado para a área de transferência!");
+            });
+        }
+
+        function inicializarMapaMapLibre() {
+            map = new maplibregl.Map({
+                container: 'map',
+                style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+                center: [-46.633308, -23.550520],
+                zoom: 13,
+                pitch: 0,
+                bearing: 0,
+                maxPitch: 85
+            });
+
+            map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+
+            map.on('load', () => {
+                map.addSource(rotaGeoJsonSourceId, {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        properties: {},
+                        geometry: { type: 'LineString', coordinates: [] }
+                    }
+                });
+
+                map.addLayer({
+                    id: rotaLayerId,
+                    type: 'line',
+                    source: rotaGeoJsonSourceId,
+                    layout: {
+                        'line-join': 'round',
+                        'line-cap': 'round'
+                    },
+                    paint: {
+                        'line-color': '#3b82f6',
+                        'line-width': 4,
+                        'line-opacity': 0.75
+                    }
+                });
+
+                redrawMapMarkers();
+            });
+        }
+
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+        }
+
+        function abrirModalPagamento() { 
+            const modal = document.getElementById('modalPagamento');
+            modal.classList.remove('hidden'); 
+        }
+
+        function fecharModalPagamento() { 
+            const modal = document.getElementById('modalPagamento');
+            modal.classList.add('hidden'); 
+            if (intervaloVerificacaoPix) clearInterval(intervaloVerificacaoPix);
+            localStorage.removeItem('rotaFacilPaymentId');
+        }
+
+        function copiarPix() {
+            const pixInput = document.getElementById('pixCopiaCola');
+            pixInput.select();
+            pixInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(pixInput.value);
+            alert("📋 Chave Pix copiada! Vá ao seu banco para pagar.");
+        }
+
+        function iniciarPagamentoPix() {
+            abrirModalPagamento();
+            document.getElementById('statusAguardando').innerText = "A gerar QR Code Pix...";
+
+            fetch('/api/pagamento/criar-pix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('imgQrCode').src = `data:image/png;base64,${data.qrCodeBase64}`;
+                    document.getElementById('pixCopiaCola').value = data.qrCodeCopiaCola;
+                    document.getElementById('statusAguardando').innerText = "A aguardar confirmação do pagamento...";
+                    localStorage.setItem('rotaFacilPaymentId', data.paymentId);
+
+                    if (intervaloVerificacaoPix) clearInterval(intervaloVerificacaoPix);
+                    intervaloVerificacaoPix = setInterval(() => { verificarStatusPagamento(data.paymentId); }, 4000);
+                } else {
+                    alert("Erro ao gerar Pix.");
+                }
+            })
+            .catch(err => {
+                console.error("Erro na requisição do Pix:", err);
+                alert("Erro de conexão ao gerar o Pix.");
+            });
+        }
+
+        function verificarStatusPagamentoManual() {
+            const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+            if (savedPaymentId) {
+                document.getElementById('statusAguardando').innerText = "A verificar pagamento...";
+                verificarStatusPagamento(savedPaymentId);
+            } else {
+                alert("Nenhum pagamento pendente encontrado.");
+            }
+        }
+
+        function verificarStatusPagamento(paymentId) {
+            if (!paymentId) return;
+            fetch('/api/pagamento/verificar-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentId, deviceId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.aprovado) {
+                    clearInterval(intervaloVerificacaoPix);
+                    localStorage.removeItem('rotaFacilPaymentId');
+                    
+                    document.getElementById('statusAguardando').innerHTML = `<span class="text-emerald-400 font-bold">🎉 Pagamento Aprovado! A ativar 30 dias...</span>`;
+                    const spinner = document.getElementById('spinnerAguardando');
+                    if (spinner) spinner.classList.remove('animate-spin');
+
+                    setTimeout(() => {
+                        fecharModalPagamento();
+                        alert("🎉 Pagamento aprovado com sucesso! Os seus 30 dias foram liberados.");
+                        location.reload();
+                    }, 1500);
+                }
+            })
+            .catch(err => console.error("Erro ao verificar status:", err));
+        }
+
+        async function verificarLicenca() {
+            try {
+                const response = await fetch('/api/licenca/verificar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId })
+                });
+                const data = await response.json();
+                if (data.status === 'expirado') {
+                    document.getElementById('telaBloqueio').classList.remove('hidden');
+                    document.getElementById('cronometroDisplay').innerText = "EXPIRADO";
+                    document.getElementById('statusPlanoMenu').innerText = "Expirado";
+                    document.getElementById('bloqueioDeviceId').innerText = deviceId;
+                } else {
+                    tempoRestanteMsGlobal = data.tempoRestanteMs;
+                    document.getElementById('statusPlanoMenu').innerText = data.plano;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function exibirCronômetro(ms) {
+            if (ms <= 0) { document.getElementById('cronometroDisplay').innerText = "EXPIRADO"; verificarLicenca(); return; }
+            let segundos = Math.floor((ms / 1000) % 60);
+            let minutos = Math.floor((ms / (1000 * 60)) % 60);
+            let horas = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            let dias = Math.floor(ms / (1000 * 60 * 60 * 24));
+            let texto = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+            if (dias > 0) texto = `${dias}d ` + texto;
+            document.getElementById('cronometroDisplay').innerText = texto;
+        }
+
+        function salvarDados() { localStorage.setItem('rotaFacilDestinos', JSON.stringify(destinos)); }
+
+        function ouvirVoz(inputId, btnElement) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) { alert("Navegador sem suporte a voz."); return; }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR'; recognition.interimResults = true;
+            btnElement.classList.add('escutando');
+            let textoFinal = "";
+            recognition.onresult = (e) => {
+                let interim = "";
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    if (e.results[i].isFinal) textoFinal += e.results[i][0].transcript;
+                    else interim += e.results[i][0].transcript;
+                }
+                document.getElementById(inputId).value = textoFinal + interim;
+            };
+            recognition.onend = () => {
+                btnElement.classList.remove('escutando');
+                if (inputId === 'destinoInput' && document.getElementById(inputId).value.trim() !== "") adicionarDestino();
+            };
+            recognition.start();
+        }
+
+        function adicionarDestino() {
+            const input = document.getElementById('destinoInput');
+            const valor = input.value.trim();
+            if (!valor) return;
+            if (destinos.length >= 150) { alert("Limite máximo de 150 paradas atingido."); return; }
+            
+            let existente = destinos.find(d => d.endereco.toLowerCase() === valor.toLowerCase());
+            if (existente) {
+                existente.sequenceOriginal += `, ${destinos.length + 1}`;
+                input.value = '';
+                salvarDados();
+                atualizarLista();
+                redrawMapMarkers();
+                alert(`📦 Pacote adicionado à Parada existente (${existente.stopOriginal})!`);
+                return;
+            }
+
+            destinos.push({ 
+                endereco: valor, 
+                lat: null, 
+                lon: null, 
+                id: Date.now(), 
+                status: null,
+                stopOriginal: destinos.length + 1,
+                sequenceOriginal: `${destinos.length + 1}`
+            });
+            input.value = '';
+            salvarDados();
+            atualizarLista();
+            geocodificarComAtraso(valor).then(coords => {
+                if (coords) {
+                    const idx = destinos.findIndex(d => d.id === destinos[destinos.length - 1].id);
+                    if (idx !== -1) { destinos[idx].lat = coords.lat; destinos[idx].lon = coords.lon; salvarDados(); redrawMapMarkers(); }
+                }
+            });
+        }
+
+        async function importarArquivoEnderecos(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const nomeArquivo = file.name.toLowerCase();
+            const ehExcel = nomeArquivo.endsWith('.xlsx') || nomeArquivo.endsWith('.xls') || nomeArquivo.endsWith('.csv');
+
+            if (ehExcel) {
+                alert("📊 A ler a planilha e agrupando rigorosamente por endereço...");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const primeiroSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[primeiroSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        let mapaParadas = new Map();
+
+                        if (json.length > 1) {
+                            let cabecalho = json[0].map(c => String(c || '').trim().toLowerCase());
+                            let idxSeq = cabecalho.findIndex(c => c.includes('seq') || c.includes('pacote'));
+                            let idxStop = cabecalho.findIndex(c => c.includes('stop') || c.includes('parada') || c.includes('par'));
+                            let idxRua = cabecalho.findIndex(c => c.includes('rua') || c.includes('end') || c.includes('address') || c.includes('logradouro'));
+                            let idxCidade = cabecalho.findIndex(c => c.includes('cidade') || c.includes('municipio'));
+                            let idxCep = cabecalho.findIndex(c => c.includes('cep') || c.includes('postal'));
+                            let idxLat = cabecalho.findIndex(c => c.includes('lat'));
+                            let idxLon = cabecalho.findIndex(c => c.includes('lon') || c.includes('lng'));
+
+                            if (idxStop === -1) idxStop = 2;
+                            if (idxSeq === -1) idxSeq = 1;
+                            if (idxRua === -1) idxRua = 4;
+                            if (idxCidade === -1) idxCidade = 6;
+                            if (idxCep === -1) idxCep = 7;
+                            if (idxLat === -1) idxLat = 8;
+                            if (idxLon === -1) idxLon = 9;
+
+                            for (let i = 1; i < json.length; i++) {
+                                let linha = json[i];
+                                if (linha && linha.length > 0) {
+                                    let sequenceNum = String(linha[idxSeq] !== undefined ? linha[idxSeq] : '').trim();
+                                    let stopNum = String(linha[idxStop] !== undefined ? linha[idxStop] : '').trim();
+                                    let rua = String(linha[idxRua] !== undefined ? linha[idxRua] : '').trim();
+                                    let cidade = String(linha[idxCidade] !== undefined ? linha[idxCidade] : '').trim();
+                                    let cep = String(linha[idxCep] !== undefined ? linha[idxCep] : '').trim();
+                                    let lat = parseFloat(linha[idxLat]);
+                                    let lon = parseFloat(linha[idxLon]);
+
+                                    if (rua.length > 2 && stopNum !== '' && stopNum !== '-' && stopNum !== 'undefined') {
+                                        let enderecoCompleto = `${rua}`;
+                                        if (cidade && cidade !== 'undefined') enderecoCompleto += `, ${cidade}`;
+                                        if (cep && cep !== 'undefined') enderecoCompleto += ` - CEP ${cep}`;
+
+                                        let ruaLimpa = rua.toLowerCase().replace(/\s+/g, ' ').trim();
+                                        let chaveUnica = ruaLimpa;
+
+                                        if (mapaParadas.has(chaveUnica)) {
+                                            let itemExistente = mapaParadas.get(chaveUnica);
+                                            if (sequenceNum && !itemExistente.sequenceOriginal.includes(sequenceNum)) {
+                                                itemExistente.sequenceOriginal += `, ${sequenceNum}`;
+                                            }
+                                        } else {
+                                            mapaParadas.set(chaveUnica, {
+                                                endereco: enderecoCompleto,
+                                                lat: !isNaN(lat) ? lat : null,
+                                                lon: !isNaN(lon) ? lon : null,
+                                                id: Date.now() + Math.random(),
+                                                status: null,
+                                                stopOriginal: stopNum,
+                                                sequenceOriginal: sequenceNum !== '' ? sequenceNum : stopNum
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        destinos = Array.from(mapaParadas.values());
+
+                        if (destinos.length > 0) {
+                            salvarDados();
+                            atualizarLista();
+                            redrawMapMarkers();
+                            alert(`✅ ${destinos.length} endereços importados e agrupados perfeitamente!`);
+                        } else {
+                            alert("⚠️ Nenhum endereço válido foi encontrado.");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("❌ Erro ao ler o ficheiro Excel.");
+                    } finally {
+                        event.target.value = '';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+
+            } else {
+                const formData = new FormData();
+                formData.append('arquivo', file);
+
+                alert("🔍 A ler ficheiro...");
+
+                try {
+                    const response = await fetch('/api/extrair-enderecos', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.enderecos && data.enderecos.length > 0) {
+                        destinos = [];
+                        data.enderecos.forEach((end, idx) => {
+                            if (destinos.length < 150) {
+                                destinos.push({ 
+                                    endereco: end, 
+                                    lat: null, 
+                                    lon: null, 
+                                    id: Date.now() + Math.random(), 
+                                    status: null, 
+                                    stopOriginal: idx + 1,
+                                    sequenceOriginal: `${idx + 1}`
+                                });
+                            }
+                        });
+                        salvarDados();
+                        atualizarLista();
+                        alert(`✅ ${data.enderecos.length} endereços importados com sucesso!`);
+                    } else {
+                        alert("⚠️ Nenhum endereço encontrado.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("❌ Erro ao processar ficheiro.");
+                } finally {
+                    event.target.value = '';
+                }
+            }
+        }
+
+        function removerDestino(index) { destinos.splice(index, 1); salvarDados(); atualizarLista(); redrawMapMarkers(); }
+        function limparTudo() { if(confirm("Apagar tudo?")) { destinos = []; document.getElementById('origemInput').value = ''; salvarDados(); atualizarLista(); redrawMapMarkers(); document.getElementById('distanciaTotal').innerText = '0.0 km'; } }
+
+        function definirStatusParada(index, status) {
+            destinos[index].status = status;
+            salvarDados();
+            atualizarLista();
+            redrawMapMarkers();
+        }
+
+        function navegarParaEndereco(endereco) {
+            let origemStr = document.getElementById('origemInput').value.trim();
+            let url = `https://www.google.com/maps/dir/?api=1`;
+            if (origemStr && !origemStr.includes("A obter")) {
+                url += `&origin=${encodeURIComponent(origemStr)}`;
+            }
+            url += `&destination=${encodeURIComponent(endereco)}`;
+            window.open(url, '_blank');
+        }
+
+        function abrirWazeEndereco(endereco) {
+            window.open(`https://waze.com/ul?q=${encodeURIComponent(endereco)}&navigate=yes`, '_blank');
+        }
+
+        function atualizarLista() {
+            const container = document.getElementById('listaDestinos');
+            document.getElementById('contadorParadas').innerText = `${destinos.length} Paradas`;
+            if (destinos.length === 0) {
+                container.innerHTML = `<div class="text-center py-4 text-slate-500 text-xs border border-dashed border-slate-700 rounded-xl">Nenhum endereço adicionado.</div>`;
+                return;
+            }
+            container.innerHTML = '';
+            destinos.forEach((item, index) => {
+                let corFundoItem = "bg-slate-800/80 border-slate-700";
+                let estiloBadge = "bg-blue-600 text-white";
+                
+                if (item.status === 'entregue') {
+                    corFundoItem = "bg-emerald-950/40 border-emerald-900/60";
+                    estiloBadge = "bg-emerald-600 text-white";
+                } else if (item.status === 'insucesso') {
+                    corFundoItem = "bg-amber-950/40 border-amber-900/60";
+                    estiloBadge = "bg-amber-600 text-white";
+                }
+
+                const numeroParada = item.stopOriginal !== undefined ? item.stopOriginal : (index + 1);
+                const numeroPacote = item.sequenceOriginal !== undefined ? item.sequenceOriginal : `${index + 1}`;
+
+                const temMaisDeUmPacote = String(numeroPacote).includes(',');
+                if (temMaisDeUmPacote && !item.status) {
+                    estiloBadge = "bg-red-600 text-white";
+                }
+
+                const div = document.createElement('div');
+                div.className = `flex items-center justify-between border p-2 rounded-xl text-xs gap-2 shadow-sm ${corFundoItem}`;
+                div.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <div class="${estiloBadge} w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">${numeroParada}</div>
+                        <div class="truncate text-slate-200 font-medium">
+                            Parada ${numeroParada} <span class="text-slate-500">&bull;</span> <strong class="text-blue-400">Pacote(s): ${numeroPacote}</strong>
+                            <div class="text-[10px] text-slate-400 truncate">${item.endereco}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${item.status === 'entregue' ? '<span class="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">Entregue</span>' : ''}
+                        ${item.status === 'insucesso' ? '<span class="text-[10px] font-bold text-amber-400 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">Insucesso</span>' : ''}
+                        <button onclick="removerDestino(${index})" class="text-slate-500 hover:text-red-400 transition-colors px-1" title="Remover Parada"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>`;
+                container.appendChild(div);
+            });
+        }
+
+        async function obterGeometriaRotaOSRM(pontos) {
+            if (pontos.length < 2) return [];
+            let todasCoordenadasRuas = [];
+            
+            for (let i = 0; i < pontos.length - 1; i += 20) {
+                let fatia = pontos.slice(i, i + 21);
+                if (fatia.length < 2) break;
+                
+                let stringCoords = fatia.map(p => `${p.lon},${p.lat}`).join(';');
+                let url = `https://router.project-osrm.org/route/v1/driving/${stringCoords}?overview=full&geometries=geojson&steps=true&continue_straight=false`;
+
+                try {
+                    let res = await fetch(url);
+                    let data = await res.json();
+                    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+                        let coords = data.routes[0].geometry.coordinates;
+                        if (todasCoordenadasRuas.length > 0) {
+                            todasCoordenadasRuas.push(...coords.slice(1));
+                        } else {
+                            todasCoordenadasRuas.push(...coords);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro ao procurar trajeto de ruas:", e);
+                }
+            }
+            return todasCoordenadasRuas;
+        }
+
+        async function redrawMapMarkers() {
+            if (!map) return;
+
+            markersList.forEach(m => m.remove());
+            markersList = [];
+
+            let validos = destinos.filter(d => d.lat !== null && d.lon !== null);
+            let distanciaTotalKm = 0;
+
+            let mapaCoordenadasOcupadas = {};
+
+            destinos.forEach((item, index) => {
+                if (item.lat && item.lon) {
+                    let latFinal = item.lat;
+                    let lonFinal = item.lon;
+                    
+                    let chaveCoord = `${latFinal.toFixed(4)}_${lonFinal.toFixed(4)}`;
+                    
+                    if (!mapaCoordenadasOcupadas[chaveCoord]) {
+                        mapaCoordenadasOcupadas[chaveCoord] = [];
+                    }
+                    mapaCoordenadasOcupadas[chaveCoord].push(index);
+                    
+                    let posicaoNoGrupo = mapaCoordenadasOcupadas[chaveCoord].length - 1;
+                    
+                    if (posicaoNoGrupo > 0) {
+                        let angulo = (posicaoNoGrupo * 2 * Math.PI) / 6; 
+                        let raio = 0.00025; 
+                        latFinal += raio * Math.cos(angulo);
+                        lonFinal += raio * Math.sin(angulo);
+                    }
+
+                    const numeroParada = item.stopOriginal !== undefined ? item.stopOriginal : (index + 1);
+                    const numeroPacote = item.sequenceOriginal !== undefined ? item.sequenceOriginal : `${index + 1}`;
+                    const temMaisDeUmPacote = String(numeroPacote).includes(',');
+
+                    const el = document.createElement('div');
+                    el.className = 'custom-marker';
+                    
+                    if (item.status === 'entregue') {
+                        el.classList.add('entregue');
+                    } else if (item.status === 'insucesso') {
+                        el.classList.add('insucesso');
+                    } else if (temMaisDeUmPacote) {
+                        el.classList.add('mesmo-endereco');
+                    }
+                    
+                    el.innerHTML = `${numeroParada}`;
+
+                    const enderecoEscapado = item.endereco.replace(/'/g, "\\'");
+
+                    const popupHtml = `
+                        <div style="font-family: sans-serif; font-size: 12px; min-width: 210px; background: #0f172a; color: #f8fafc; padding: 4px; border-radius: 8px;">
+                            <div style="font-weight: bold; margin-bottom: 2px; color: #f1f5f9;">Parada ${numeroParada} &bull; Pacote(s): ${numeroPacote}</div>
+                            <div style="margin-bottom: 8px; color: #94a3b8; font-size: 11px;">${item.endereco}</div>
+                            
+                            <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                                <button onclick="navegarParaEndereco('${enderecoEscapado}')" style="background-color: #2563eb; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex: 1;"><i class="fa-solid fa-location-arrow"></i> Maps</button>
+                                <button onclick="abrirWazeEndereco('${enderecoEscapado}')" style="background-color: #0284c7; color: white; border: none; padding: 5px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex: 1;"><i class="fa-brands fa-waze"></i> Waze</button>
+                            </div>
+
+                            <div style="display: flex; gap: 6px; border-top: 1px solid #334155; padding-top: 6px;">
+                                <button onclick="definirStatusParada(${index}, 'entregue')" style="background-color: #064e3b; color: #34d399; border: 1px solid #065f46; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex: 1;">Entregue</button>
+                                <button onclick="definirStatusParada(${index}, 'insucesso')" style="background-color: #7c2d12; color: #fb923c; border: 1px solid #9a3412; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer; flex: 1;">Insucesso</button>
+                            </div>
+                        </div>
+                    `;
+
+                    const popup = new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml);
+
+                    const marker = new maplibregl.Marker({ element: el })
+                        .setLngLat([lonFinal, latFinal])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    markersList.push(marker);
+                }
+            });
+
+            for (let i = 0; i < validos.length - 1; i++) {
+                distanciaTotalKm += calcularDistancia(validos[i].lat, validos[i].lon, validos[i+1].lat, validos[i+1].lon) * 1.3;
+            }
+            document.getElementById('distanciaTotal').innerText = `${distanciaTotalKm.toFixed(1)} km`;
+
+            if (validos.length >= 2) {
+                let coordenadasRuas = await obterGeometriaRotaOSRM(validos);
+                if (map.getSource(rotaGeoJsonSourceId)) {
+                    map.getSource(rotaGeoJsonSourceId).setData({
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: coordenadasRuas
+                        }
+                    });
+                }
+            } else if (map.getSource(rotaGeoJsonSourceId)) {
+                map.getSource(rotaGeoJsonSourceId).setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: { type: 'LineString', coordinates: [] }
+                });
+            }
+
+            let todosComCoords = destinos.filter(d => d.lat !== null && d.lon !== null);
+            if (todosComCoords.length > 0 && !primeiraCentralizacaoGPS) {
+                let bounds = new maplibregl.LngLatBounds();
+                todosComCoords.forEach(d => bounds.extend([d.lon, d.lat]));
+                map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
+                primeiraCentralizacaoGPS = true;
+            }
+        }
+
+        async function geocodificarComAtraso(end) {
+            try {
+                const res = await fetch('/api/geocodificar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endereco: end })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    return { lat: data.lat, lon: data.lon };
+                }
+            } catch (e) {
+                console.error("Erro ao geocodificar:", e);
+            }
+            return null;
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180, dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        async function otimizarRota() {
+            if (destinos.length < 2) { 
+                alert("Adicione pelo menos 2 endereços."); 
+                return; 
+            }
+
+            const btnOtimizar = document.getElementById('btnOtimizar');
+            const textoOriginal = btnOtimizar.innerHTML;
+            btnOtimizar.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-emerald-400"></i>`;
+            btnOtimizar.disabled = true;
+
+            for (let i = 0; i < destinos.length; i++) {
+                if (!destinos[i].lat || !destinos[i].lon) {
+                    const coords = await geocodificarComAtraso(destinos[i].endereco);
+                    if (coords) {
+                        destinos[i].lat = coords.lat;
+                        destinos[i].lon = coords.lon;
+                        salvarDados();
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                }
+            }
+
+            let pendentes = destinos.filter(d => d.lat !== null && d.lon !== null && !d.status);
+            let concluidos = destinos.filter(d => d.status);
+
+            if (pendentes.length < 2) {
+                btnOtimizar.innerHTML = textoOriginal;
+                btnOtimizar.disabled = false;
+                alert("Não há paradas pendentes suficientes para otimizar.");
+                return;
+            }
+
+            try {
+                let stringCoords = pendentes.map(p => `${p.lon},${p.lat}`).join(';');
+                let urlTrip = `https://router.project-osrm.org/trip/v1/driving/${stringCoords}?source=first&roundtrip=false`;
+                
+                let res = await fetch(urlTrip);
+                let data = await res.json();
+
+                if (data.code === 'Ok' && data.waypoints) {
+                    let ordemOtimizada = data.waypoints
+                        .sort((a, b) => a.waypoint_index - b.waypoint_index)
+                        .map(wp => pendentes[wp.singles_index || wp.waypoint_index]);
+
+                    destinos = [...ordemOtimizada, ...concluidos];
+                } else {
+                    executarOtimizacaoSimples(pendentes, concluidos);
+                }
+            } catch (err) {
+                console.error("Erro na otimização:", err);
+                executarOtimizacaoSimples(pendentes, concluidos);
+            }
+
+            btnOtimizar.innerHTML = textoOriginal;
+            btnOtimizar.disabled = false;
+
+            salvarDados();
+            atualizarLista();
+            redrawMapMarkers();
+            
+            alert("✅ Rota otimizada considerando o sentido da mão de direção!");
+        }
+
+        function executarOtimizacaoSimples(pendentes, concluidos) {
+            let pontoAtualLat = markerEntregador ? markerEntregador.getLngLat().lat : pendentes[0].lat;
+            let pontoAtualLon = markerEntregador ? markerEntregador.getLngLat().lng : pendentes[0].lon;
+
+            let naoVisitados = [...pendentes];
+            let rotaOtimizadaPendentes = [];
+
+            while (naoVisitados.length > 0) {
+                let maisProximoIndex = 0;
+                let menorDistancia = calcularDistancia(pontoAtualLat, pontoAtualLon, naoVisitados[0].lat, naoVisitados[0].lon);
+
+                for (let i = 1; i < naoVisitados.length; i++) {
+                    let distanciaAtual = calcularDistancia(pontoAtualLat, pontoAtualLon, naoVisitados[i].lat, naoVisitados[i].lon);
+                    if (distanciaAtual < menorDistancia) {
+                        menorDistancia = distanciaAtual;
+                        maisProximoIndex = i;
+                    }
+                }
+
+                let proximoDestino = naoVisitados.splice(maisProximoIndex, 1)[0];
+                rotaOtimizadaPendentes.push(proximoDestino);
+
+                pontoAtualLat = proximoDestino.lat;
+                pontoAtualLon = proximoDestino.lon;
+            }
+
+            destinos = [...rotaOtimizadaPendentes, ...concluidos];
+        }
+
+        function navegarProximaParada() {
+            let pendentes = destinos.filter(d => !d.status);
+            if (pendentes.length === 0) {
+                alert("Não há paradas pendentes na rota!");
+                return;
+            }
+
+            let proximaParada = pendentes[0].endereco;
+            let origemStr = document.getElementById('origemInput').value.trim();
+            
+            let url = `https://www.google.com/maps/dir/?api=1`;
+            if (origemStr && !origemStr.includes("A obter")) {
+                url += `&origin=${encodeURIComponent(origemStr)}`;
+            }
+            url += `&destination=${encodeURIComponent(proximaParada)}`;
+            
+            window.open(url, '_blank');
+        }
+
+        function abrirWaze() { 
+            let pendentes = destinos.filter(d => !d.status);
+            if (pendentes.length > 0) {
+                window.open(`https://waze.com/ul?q=${encodeURIComponent(pendentes[0].endereco)}&navigate=yes`, '_blank');
+            } else {
+                alert("Nenhum destino pendente na lista.");
+            }
+        }
+
+        function usarLocalizacaoAtual() {
+            const inputOrigem = document.getElementById('origemInput');
+            inputOrigem.value = "A obter localização...";
+            
+            if (navigator.geolocation) {
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
+
+                primeiraCentralizacaoGPS = false; 
+
+                watchId = navigator.geolocation.watchPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    
+                    if (!lat || !lon) return;
+
+                    contadorMovimentosCarro++;
+                    document.getElementById('contadorMovimentos').innerText = contadorMovimentosCarro;
+
+                    if (!markerEntregador) {
+                        const elHtml = document.createElement('div');
+                        elHtml.className = 'entregador-marker';
+                        elHtml.innerHTML = `
+                            <div style="width: 20px; height: 20px; background-color: #3b82f6; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 0 6px rgba(59, 130, 246, 0.3);"></div>
+                        `;
+                        elHtml.title = 'Sua localização em tempo real';
+
+                        markerEntregador = new maplibregl.Marker({ 
+                            element: elHtml,
+                            anchor: 'center' 
+                        })
+                        .setLngLat([lon, lat])
+                        .addTo(map);
+                    } else {
+                        markerEntregador.setLngLat([lon, lat]);
+                    }
+
+                    if (!primeiraCentralizacaoGPS) {
+                        map.flyTo({ center: [lon, lat], zoom: 17, speed: 1.5 });
+                        primeiraCentralizacaoGPS = true;
+                    }
+
+                    const agora = Date.now();
+                    if (agora - ultimoTempoBuscaRua > 15000 || inputOrigem.value.includes("A obter")) {
+                        ultimoTempoBuscaRua = agora;
+                        try {
+                            let res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+                            if (res.ok) {
+                                let data = await res.json();
+                                let rua = data.address.road || data.address.pedestrian || data.address.suburb || 'Localização em movimento';
+                                let bairro = data.address.suburb || data.address.city_district || '';
+                                inputOrigem.value = bairro ? `${rua}, ${bairro}` : rua;
+                            }
+                        } catch (e) {}
+                    }
+                }, (err) => {
+                    alert("Erro ao aceder ao GPS em tempo real.");
+                    inputOrigem.value = "";
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 10000
+                });
+            } else {
+                alert("O seu navegador não suporta geolocalização.");
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RotaFácil - Painel Administrativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-4 md:p-8 font-sans antialiased">
+
+    <!-- MODAL DE LOGIN ADMIN -->
+    <div id="modalLogin" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div class="bg-blue-50 text-blue-600 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">Painel Restrito</h3>
+            <p class="text-xs text-slate-500">Introduza a palavra-passe de administrador para continuar.</p>
+            <input type="password" id="senhaAdmin" placeholder="Palavra-passe..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 text-center" onkeypress="if(event.key === 'Enter') fazerLogin()">
+            <button onclick="fazerLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Entrar no Painel</button>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO DO PAINEL -->
+    <div class="max-w-5xl mx-auto space-y-6">
+        
+        <header class="flex items-center justify-between bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl">
+                    <i class="fa-solid fa-shield-halved text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-800">Administração de Licenças - RotaFácil</h1>
+                    <p class="text-xs text-slate-400">Gestão de dispositivos e acessos ativos</p>
+                </div>
+            </div>
+            <button onclick="carregarDispositivos()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-rotate"></i> Atualizar Lista
+            </button>
+        </header>
+
+        <!-- ESTATÍSTICAS RÁPIDAS -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-xs text-slate-400 font-semibold uppercase">Total de Dispositivos</div>
+                <div id="totalDispositivos" class="text-xl font-black text-slate-800">0</div>
+            </div>
+            <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-xs text-slate-400 font-semibold uppercase">Ativos / Online</div>
+                <div id="totalAtivos" class="text-xl font-black text-emerald-600">0</div>
+            </div>
+        </div>
+
+        <!-- TABELA DE UTILIZADORES -->
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden space-y-4 p-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div class="font-bold text-xs text-slate-500 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-users text-blue-500"></i> Dispositivos Registados e Estados
+                </div>
+                <!-- BARRA DE PESQUISA POR ID -->
+                <div class="relative w-full sm:w-64">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-search text-xs"></i></span>
+                    <input type="text" id="inputPesquisa" placeholder="Pesquisar por ID..." onkeyup="filtrarDispositivos()" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-400 uppercase font-semibold border-b border-slate-100">
+                        <tr>
+                            <th class="p-3">Device ID</th>
+                            <th class="p-3">Estado / Notificação</th>
+                            <th class="p-3">Validade / Expiração</th>
+                            <th class="p-3 text-center">Ações Rápidas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaUtilizadores" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let tokenAdmin = "";
+        let listaGlobalDispositivos = [];
+
+        function fazerLogin() {
+            const senha = document.getElementById('senhaAdmin').value.trim();
+            if (!senha) return;
+
+            if (senha === "admin123") {
+                tokenAdmin = senha;
+                document.getElementById('modalLogin').classList.add('hidden');
+                carregarDispositivos();
+            } else {
+                alert("❌ Palavra-passe incorreta!");
+            }
+        }
+
+        async function carregarDispositivos() {
+            try {
+                const res = await fetch('/api/admin/dispositivos', {
+                    headers: { 'Authorization': tokenAdmin }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    listaGlobalDispositivos = data.dispositivos;
+                    renderizarTabela(listaGlobalDispositivos);
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao carregar lista de dispositivos.");
+            }
+        }
+
+        function renderizarTabela(dispositivos) {
+            const tbody = document.getElementById('tabelaUtilizadores');
+            tbody.innerHTML = '';
+            
+            let ativos = 0;
+            document.getElementById('totalDispositivos').innerText = dispositivos.length;
+
+            dispositivos.forEach(item => {
+                if (item.ativo) ativos++;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-blue-600">${item.deviceId}</td>
+                    <td class="p-3 font-bold ${item.ativo ? 'text-emerald-600' : 'text-red-600'}">
+                        ${item.statusTexto}
+                    </td>
+                    <td class="p-3 text-slate-500">${new Date(item.expiracao).toLocaleString('pt-BR')}</td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="liberarAcesso('${item.deviceId}', 'teste3h')" class="bg-amber-500 hover:bg-amber-400 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Liberar Teste de 3 Horas">+3h Teste</button>
+                        <button onclick="liberarAcesso('${item.deviceId}', 30)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Liberar +30 Dias">+30 Dias</button>
+                        <button onclick="liberarAcesso('${item.deviceId}', 0)" class="bg-red-500 hover:bg-red-400 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Bloquear Acesso">Bloquear</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('totalAtivos').innerText = ativos;
+        }
+
+        function filtrarDispositivos() {
+            const termo = document.getElementById('inputPesquisa').value.toLowerCase();
+            const filtrados = listaGlobalDispositivos.filter(item => item.deviceId.toLowerCase().includes(termo));
+            renderizarTabela(filtrados);
+        }
+
+        async function liberarAcesso(deviceId, dias) {
+            try {
+                const res = await fetch('/api/admin/liberar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenAdmin },
+                    body: JSON.stringify({ deviceId, dias })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    carregarDispositivos();
+                } else {
+                    alert("Erro ao atualizar acesso.");
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>
