@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RotaShopee - Painel Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        input { font-size: 16px !important; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-3 md:p-8 font-sans antialiased">
+
+    <!-- MODAL DE LOGIN MASTER -->
+    <div id="modalLoginMaster" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div class="bg-indigo-950 border border-indigo-800 text-indigo-400 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-100">Painel Master Supremo</h3>
+            <p class="text-xs text-slate-400">Introduza a palavra-passe de Administrador Master.</p>
+            <input type="password" id="senhaMaster" placeholder="Palavra-passe master..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 text-center" onkeypress="if(event.key === 'Enter') fazerLoginMaster()">
+            <button onclick="fazerLoginMaster()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Aceder Master</button>
+        </div>
+    </div>
+
+    <!-- MODAL ADICIONAR / EDITAR REVENDA -->
+    <div id="modalRevenda" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-slate-100">
+            <button onclick="fecharModalRevenda()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-slate-100" id="tituloModalRevenda">Adicionar Nova Revenda</h3>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[11px] text-slate-400 font-bold uppercase">Nome da Revenda / Parceiro</label>
+                    <input type="text" id="revNome" placeholder="Ex: João Logística" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 mt-1">
+                </div>
+                <div>
+                    <label class="text-[11px] text-slate-400 font-bold uppercase">Login (Utilizador)</label>
+                    <input type="text" id="revUser" placeholder="Ex: joao_rev" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 mt-1">
+                </div>
+                <div>
+                    <label class="text-[11px] text-slate-400 font-bold uppercase">Palavra-Chave (Senha de Acesso)</label>
+                    <input type="text" id="revSenha" placeholder="Ex: revenda123" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 mt-1">
+                </div>
+                <div>
+                    <label class="text-[11px] text-slate-400 font-bold uppercase">Créditos Iniciais</label>
+                    <input type="number" id="revCreditos" value="10" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 mt-1">
+                </div>
+                <div>
+                    <label class="text-[11px] text-slate-400 font-bold uppercase">Token Mercado Pago (Opcional)</label>
+                    <input type="password" id="revTokenMp" placeholder="APP_USR-..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 mt-1">
+                </div>
+            </div>
+
+            <button onclick="salvarRevenda()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md mt-2">Guardar Revendedor</button>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL MASTER -->
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <header class="flex flex-col sm:flex-row items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl gap-4">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="bg-indigo-600 text-white p-3 rounded-xl shadow-md">
+                    <i class="fa-solid fa-crown text-base"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-100">Painel Master & Gestão de Revendas</h1>
+                    <p class="text-xs text-slate-400">Controlo central de parceiros e distribuição de créditos</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button onclick="abrirModalAdicionarRevenda()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-all">
+                    <i class="fa-solid fa-user-plus"></i> Nova Revenda
+                </button>
+                <button onclick="carregarDadosMaster()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border border-slate-700">
+                    <i class="fa-solid fa-rotate"></i> Atualizar
+                </button>
+            </div>
+        </header>
+
+        <!-- ESTATÍSTICAS GLOBAIS -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Revendedores</div>
+                <div id="totalRevendedores" class="text-2xl font-black text-indigo-400">0</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Créditos Distribuídos</div>
+                <div id="totalCreditosDistribuidos" class="text-2xl font-black text-amber-400">0</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Clientes Finais</div>
+                <div id="totalClientesMaster" class="text-2xl font-black text-slate-100">0</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Clientes Online</div>
+                <div id="totalClientesOnline" class="text-2xl font-black text-emerald-400">0</div>
+            </div>
+        </div>
+
+        <!-- TABELA DE REVENDA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden space-y-3 p-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="font-bold text-xs text-slate-300 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-handshake text-indigo-400"></i> Lista de Parceiros e Revendas
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">Parceiro</th>
+                            <th class="p-3">Login</th>
+                            <th class="p-3">Palavra-Chave</th>
+                            <th class="p-3">Saldo Créditos</th>
+                            <th class="p-3">Estado</th>
+                            <th class="p-3 text-center">Ações & Gestão</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaRevendedores" class="divide-y divide-slate-800 text-slate-200">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TABELA DE TODOS OS CLIENTES FINAIS DO SISTEMA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden space-y-3 p-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div class="font-bold text-xs text-slate-300 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-laptop text-indigo-400"></i> Todos os Clientes Finais do Sistema
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                        <tr>
+                            <th class="p-3">Device ID</th>
+                            <th class="p-3">Vinculado a</th>
+                            <th class="p-3">Estado App</th>
+                            <th class="p-3">Validade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaMasterClientes" class="divide-y divide-slate-800 text-slate-200">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let tokenMaster = "";
+        let listaRevendas = [];
+
+        function fazerLoginMaster() {
+            const senha = document.getElementById('senhaMaster').value.trim();
+            if (!senha) return;
+
+            if (senha === "master123") {
+                tokenMaster = senha;
+                document.getElementById('modalLoginMaster').classList.add('hidden');
+                carregarDadosMaster();
+                carregarClientesMaster();
+            } else {
+                alert("❌ Palavra-passe Master incorreta!");
+            }
+        }
+
+        function abrirModalAdicionarRevenda() {
+            document.getElementById('tituloModalRevenda').innerText = "Adicionar Nova Revenda";
+            document.getElementById('revNome').value = "";
+            document.getElementById('revUser').value = "";
+            document.getElementById('revSenha').value = "";
+            document.getElementById('revCreditos').value = "10";
+            document.getElementById('revTokenMp').value = "";
+            document.getElementById('modalRevenda').classList.remove('hidden');
+        }
+
+        function fecharModalRevenda() {
+            document.getElementById('modalRevenda').classList.add('hidden');
+        }
+
+        async function carregarDadosMaster() {
+            try {
+                const res = await fetch('/api/master/revendas', {
+                    headers: { 'Authorization': tokenMaster }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    listaRevendas = data.revendas;
+                    renderizarTabelaRevendas(listaRevendas);
+                }
+
+                carregarClientesMaster();
+            } catch (e) {
+                console.error("Erro ao carregar master:", e);
+            }
+        }
+
+        async function carregarClientesMaster() {
+            try {
+                const res = await fetch('/api/master/clientes', {
+                    headers: { 'Authorization': tokenMaster }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const tbody = document.getElementById('tabelaMasterClientes');
+                    tbody.innerHTML = '';
+
+                    let total = data.clientes.length;
+                    let online = data.clientes.filter(d => d.ativo).length;
+                    
+                    document.getElementById('totalClientesMaster').innerText = total;
+                    document.getElementById('totalClientesOnline').innerText = online;
+
+                    data.clientes.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="p-3 font-mono text-indigo-400">${item.deviceId}</td>
+                            <td class="p-3 font-semibold text-amber-300">${item.revendedorNome}</td>
+                            <td class="p-3 font-bold ${item.ativo ? 'text-emerald-400' : 'text-red-400'}">
+                                <i class="fa-solid fa-circle text-[8px] mr-1"></i> ${item.statusTexto}
+                            </td>
+                            <td class="p-3 text-slate-400">${new Date(item.expiracao).toLocaleString('pt-BR')}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (e) {
+                console.error("Erro ao carregar clientes do master", e);
+            }
+        }
+
+        function renderizarTabelaRevendas(revendas) {
+            const tbody = document.getElementById('tabelaRevendedores');
+            tbody.innerHTML = '';
+            
+            let totalCreditos = 0;
+            document.getElementById('totalRevendedores').innerText = revendas.length;
+
+            revendas.forEach(rev => {
+                totalCreditos += (rev.creditos || 0);
+                const estaAtivo = rev.ativo !== false;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-100">${rev.nome}</td>
+                    <td class="p-3 font-mono text-indigo-400">${rev.usuario}</td>
+                    <td class="p-3 font-mono text-emerald-400 font-bold bg-slate-800/60 px-2 py-1 rounded inline-block my-1">${rev.senha}</td>
+                    <td class="p-3 font-black text-amber-400 text-sm">${rev.creditos || 0} Créditos</td>
+                    <td class="p-3 font-bold ${estaAtivo ? 'text-emerald-400' : 'text-red-400'}">
+                        ${estaAtivo ? 'Ativo' : 'Bloqueado'}
+                    </td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="adicionarCreditosMaster(${rev.id}, 5)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[11px] font-bold" title="Adicionar +5 Créditos">+5</button>
+                        <button onclick="adicionarCreditosMaster(${rev.id}, 10)" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-[11px] font-bold" title="Adicionar +10 Créditos">+10</button>
+                        <button onclick="alterarStatusRevenda(${rev.id}, ${!estaAtivo})" class="${estaAtivo ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'} text-white px-2 py-1 rounded text-[11px] font-bold" title="${estaAtivo ? 'Bloquear Revenda' : 'Desbloquear Revenda'}">
+                            <i class="fa-solid ${estaAtivo ? 'fa-ban' : 'fa-check'}"></i>
+                        </button>
+                        <button onclick="excluirRevendaMaster(${rev.id})" class="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded text-[11px] font-bold" title="Eliminar Revenda">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('totalCreditosDistribuidos').innerText = totalCreditos;
+        }
+
+        async function salvarRevenda() {
+            const nome = document.getElementById('revNome').value.trim();
+            const usuario = document.getElementById('revUser').value.trim();
+            const senhaRevenda = document.getElementById('revSenha').value.trim();
+            const creditos = parseInt(document.getElementById('revCreditos').value) || 0;
+            const tokenMp = document.getElementById('revTokenMp').value.trim();
+
+            if (!nome || !usuario || !senhaRevenda) {
+                alert("Preencha o nome, o login e a palavra-chave.");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/master/revenda/salvar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenMaster },
+                    body: JSON.stringify({ nome, usuario, senhaRevenda, creditos, tokenMp })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("✅ Revendedor criado com sucesso!");
+                    fecharModalRevenda();
+                    carregarDadosMaster();
+                } else {
+                    alert("Erro ao guardar revendedor.");
+                }
+            } catch (e) {
+                alert("Erro ao conectar com o servidor.");
+            }
+        }
+
+        async function adicionarCreditosMaster(id, qtd) {
+            try {
+                const res = await fetch('/api/master/revenda/creditos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenMaster },
+                    body: JSON.stringify({ id, qtd })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    carregarDadosMaster();
+                }
+            } catch (e) {
+                alert("Erro ao adicionar créditos.");
+            }
+        }
+
+        async function alterarStatusRevenda(id, novoStatus) {
+            try {
+                const res = await fetch('/api/master/revenda/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenMaster },
+                    body: JSON.stringify({ id, ativo: novoStatus })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    carregarDadosMaster();
+                }
+            } catch (e) {
+                alert("Erro ao alterar estado da revenda.");
+            }
+        }
+
+        async function excluirRevendaMaster(id) {
+            if (!confirm("Tem a certeza que deseja eliminar esta revenda?")) return;
+            try {
+                const res = await fetch('/api/master/revenda/excluir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenMaster },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("🗑️ Revenda eliminada com sucesso!");
+                    carregarDadosMaster();
+                }
+            } catch (e) {
+                alert("Erro ao eliminar revenda.");
+            }
+        }
+    </script>
+</body>
+</html>

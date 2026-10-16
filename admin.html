@@ -2,80 +2,184 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RotaShopee - Painel Administrativo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RotaShopee - Painel de Revenda</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        input { font-size: 16px !important; }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen p-4 md:p-8 font-sans antialiased">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-3 md:p-8 font-sans antialiased">
 
-    <!-- MODAL DE LOGIN ADMIN -->
-    <div id="modalLogin" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white border border-slate-200 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
-            <div class="bg-blue-50 text-blue-600 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
-                <i class="fa-solid fa-lock"></i>
+    <!-- MODAL DE LOGIN REVENDA -->
+    <div id="modalLogin" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-center">
+            <div class="bg-blue-950 border border-blue-800 text-blue-400 w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-xl font-bold">
+                <i class="fa-solid fa-key"></i>
             </div>
-            <h3 class="text-lg font-bold text-slate-800">Painel Restrito</h3>
-            <p class="text-xs text-slate-500">Introduza a palavra-passe de administrador para continuar.</p>
-            <input type="password" id="senhaAdmin" placeholder="Palavra-passe..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 text-center" onkeypress="if(event.key === 'Enter') fazerLogin()">
-            <button onclick="fazerLogin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Entrar no Painel</button>
+            <h3 class="text-lg font-bold text-slate-100">Painel de Revenda</h3>
+            <p class="text-xs text-slate-400">Introduza a sua Palavra-Chave de acesso.</p>
+            <input type="password" id="loginSenha" placeholder="Palavra-Chave..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 text-center" onkeypress="if(event.key === 'Enter') fazerLoginRevenda()">
+            <button onclick="fazerLoginRevenda()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">Entrar no Sistema</button>
         </div>
     </div>
 
-    <!-- CONTEÚDO DO PAINEL -->
-    <div class="max-w-5xl mx-auto space-y-6">
+    <!-- MODAL COMPRA DE CRÉDITOS PIX REAL -->
+    <div id="modalComprarCreditos" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative text-center text-slate-100">
+            <button onclick="fecharModalCreditos()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-slate-100">Comprar Créditos via Pix</h3>
+            
+            <div id="selecaoPacotes" class="space-y-3 py-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="selecionarPacote(5, 25, this)" class="btn-pacote bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-xs font-bold text-center transition-all">5 Créditos<br><span class="text-emerald-400 text-[11px]">R$ 25,00</span></button>
+                    <button onclick="selecionarPacote(10, 50, this)" class="btn-pacote bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-xs font-bold text-center transition-all">10 Créditos<br><span class="text-emerald-400 text-[11px]">R$ 50,00</span></button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="selecionarPacote(20, 100, this)" class="btn-pacote bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-xs font-bold text-center transition-all">20 Créditos<br><span class="text-emerald-400 text-[11px]">R$ 100,00</span></button>
+                    <button onclick="abrirModalAvulso()" class="btn-pacote bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl text-xs font-bold text-center transition-all">Avulso (R$ 5 un.)<br><span class="text-emerald-400 text-[11px]">Personalizado</span></button>
+                </div>
+                <button id="btnAvancarPix" onclick="confirmarCompraPix()" class="hidden w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow-md mt-2">Gerar QR Code Pix</button>
+            </div>
+
+            <div id="areaQrCode" class="hidden space-y-3">
+                <div class="text-xs font-bold text-emerald-400" id="detalheValorPix">Total: R$ 0,00</div>
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl inline-block">
+                    <img id="imgQrCodeCredito" src="" alt="QR Code Pix" class="w-40 h-40 mx-auto">
+                </div>
+                <input type="text" id="pixCopiaColaCredito" readonly class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 w-full font-mono">
+                <div class="text-xs text-amber-400 font-medium animate-pulse flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-spinner animate-spin"></i> <span id="statusPixCredito">A aguardar pagamento...</span>
+                </div>
+                <button onclick="verificarStatusCreditosPixManual()" class="bg-blue-600 hover:bg-blue-500 text-white w-full py-2 rounded-xl text-xs font-bold">Já fiz o pagamento</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MINI MODAL CUSTOMIZADO -->
+    <div id="modalAvulsoCustom" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[1000] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-xs w-full space-y-3 shadow-2xl text-center">
+            <div class="bg-emerald-950 border border-emerald-800 text-emerald-400 w-10 h-10 rounded-2xl mx-auto flex items-center justify-center text-lg font-bold">
+                <i class="fa-solid fa-coins"></i>
+            </div>
+            <h4 class="text-sm font-bold text-slate-100">Créditos Avulsos</h4>
+            <p class="text-[11px] text-slate-400">Quantos créditos deseja comprar?<br><span class="text-emerald-400 font-semibold">(R$ 5,00 cada 1)</span></p>
+            
+            <input type="number" id="inputAvulsoQtd" min="1" placeholder="Ex: 3" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500 text-center font-bold" oninput="calcularTotalAvulsoModal()">
+            
+            <div class="text-xs text-slate-300 font-bold" id="labelTotalAvulso">Total: R$ 0,00</div>
+
+            <div class="flex gap-2 pt-1">
+                <button onclick="fecharModalAvulso()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 rounded-xl text-xs">Cancelar</button>
+                <button onclick="confirmarAvulsoCustom()" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs shadow-md">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="max-w-5xl mx-auto space-y-5">
         
-        <header class="flex items-center justify-between bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
-            <div class="flex items-center gap-3">
-                <div class="bg-blue-600 text-white p-2.5 rounded-xl">
-                    <i class="fa-solid fa-shield-halved text-base"></i>
+        <header class="flex flex-col sm:flex-row items-center justify-between bg-slate-800/80 border border-slate-700 p-4 rounded-2xl shadow-lg gap-4">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="bg-blue-600 text-white p-3 rounded-xl">
+                    <i class="fa-solid fa-store text-base"></i>
                 </div>
                 <div>
-                    <h1 class="text-base font-bold text-slate-800">Administração de Licenças - RotaFácil</h1>
-                    <p class="text-xs text-slate-400">Gestão de dispositivos e acessos ativos</p>
+                    <h1 class="text-sm font-bold text-slate-100" id="nomeRevendedorTitle">Painel de Revenda</h1>
+                    <p class="text-xs text-slate-400">Gestão de Créditos e Clientes Finais</p>
                 </div>
             </div>
-            <button onclick="carregarDispositivos()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
-                <i class="fa-solid fa-rotate"></i> Atualizar Lista
-            </button>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                <!-- TOKEN MERCADO PAGO -->
+                <div class="flex items-center gap-2 bg-slate-900/80 p-2 rounded-xl border border-slate-700">
+                    <input type="password" id="mpTokenRevenda" placeholder="Seu Token Mercado Pago..." class="bg-transparent border-none text-xs text-slate-200 outline-none w-32 sm:w-36">
+                    <button onclick="salvarTokenMp()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm">Guardar</button>
+                </div>
+
+                <!-- WHATSAPP DE SUPORTE DO REVENDEDOR -->
+                <div class="flex items-center gap-2 bg-slate-900/80 p-2 rounded-xl border border-slate-700">
+                    <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
+                    <input type="text" id="whatsappRevenda" placeholder="Seu WhatsApp (DDI+DDD+Num)" class="bg-transparent border-none text-xs text-slate-200 outline-none w-32 sm:w-36">
+                    <button onclick="salvarWhatsappRevendedor()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm">Guardar</button>
+                </div>
+                
+                <button onclick="fazerLogout()" class="bg-red-950/80 hover:bg-red-900/80 text-red-400 border border-red-800/80 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1" title="Sair da Conta">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sair
+                </button>
+            </div>
         </header>
 
-        <!-- ESTATÍSTICAS RÁPIDAS -->
-        <div class="grid grid-cols-2 gap-4">
-            <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm space-y-1">
-                <div class="text-xs text-slate-400 font-semibold uppercase">Total de Dispositivos</div>
-                <div id="totalDispositivos" class="text-xl font-black text-slate-800">0</div>
+        <!-- CARD DO LINK DE INDICAÇÃO PARA CLIENTES -->
+        <div class="bg-gradient-to-r from-blue-950/80 to-slate-800/80 border border-blue-800/80 p-4 rounded-2xl shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="space-y-1 text-center sm:text-left">
+                <div class="text-xs font-bold text-blue-400 uppercase flex items-center gap-2 justify-center sm:justify-start">
+                    <i class="fa-solid fa-link text-blue-400"></i> Seu Link Exclusivo para Clientes
+                </div>
+                <p class="text-[11px] text-slate-300">Envie este link para os seus clientes. Quem acessar por ele ficará automaticamente vinculado a você!</p>
             </div>
-            <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm space-y-1">
-                <div class="text-xs text-slate-400 font-semibold uppercase">Ativos / Online</div>
-                <div id="totalAtivos" class="text-xl font-black text-emerald-600">0</div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <input type="text" id="inputLinkCliente" readonly class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-blue-300 font-mono w-full sm:w-72 outline-none">
+                <button onclick="copiarLinkCliente()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shrink-0">
+                    <i class="fa-solid fa-copy"></i> Copiar Link
+                </button>
             </div>
         </div>
 
-        <!-- TABELA DE UTILIZADORES -->
-        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden space-y-4 p-4">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div class="font-bold text-xs text-slate-500 uppercase flex items-center gap-2">
-                    <i class="fa-solid fa-users text-blue-500"></i> Dispositivos Registados e Estados
+        <!-- ALERTA INTELIGENTE DE CRÉDITOS BAIXOS -->
+        <div id="alertaCreditosBaixos" class="hidden bg-amber-950/60 border border-amber-900/80 p-3.5 rounded-2xl flex items-center justify-between text-xs text-amber-300">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base"></i>
+                <span><strong>Atenção:</strong> O seu saldo de créditos está baixo (menos de 3 disponíveis)! Recarregue para não parar as ativações.</span>
+            </div>
+            <button onclick="abrirModalCreditos()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-xl font-bold shadow-sm shrink-0">Recarregar</button>
+        </div>
+
+        <!-- ESTATÍSTICAS E SALDO DE CRÉDITOS -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Seus Créditos</div>
+                <div id="saldoCreditos" class="text-2xl font-black text-amber-400">0</div>
+                <button onclick="abrirModalCreditos()" class="text-[10px] text-blue-400 hover:underline font-bold">+ Comprar Créditos</button>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Total Clientes</div>
+                <div id="totalDispositivos" class="text-2xl font-black text-slate-100">0</div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">App Aberto (Online)</div>
+                <div id="totalOnline" class="text-2xl font-black text-emerald-400">0</div>
+            </div>
+            <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl shadow-sm space-y-1">
+                <div class="text-[11px] text-slate-400 font-semibold uppercase">Inativos / Offline</div>
+                <div id="totalOffline" class="text-2xl font-black text-red-400">0</div>
+            </div>
+        </div>
+
+        <!-- TABELA DE CLIENTES FINAIS -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl shadow-sm overflow-hidden space-y-3 p-4">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-700/60 pb-3">
+                <div class="font-bold text-xs text-slate-300 uppercase flex items-center gap-2">
+                    <i class="fa-solid fa-users text-blue-400"></i> Gestão de Dispositivos e Rotas
                 </div>
-                <!-- BARRA DE PESQUISA POR ID -->
                 <div class="relative w-full sm:w-64">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-search text-xs"></i></span>
-                    <input type="text" id="inputPesquisa" placeholder="Pesquisar por ID..." onkeyup="filtrarDispositivos()" class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="inputPesquisa" placeholder="Pesquisar Device ID..." onkeyup="filtrarDispositivos()" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-50 text-slate-400 uppercase font-semibold border-b border-slate-100">
+                    <thead class="bg-slate-900/60 text-slate-400 uppercase font-semibold border-b border-slate-700">
                         <tr>
                             <th class="p-3">Device ID</th>
-                            <th class="p-3">Estado / Notificação</th>
-                            <th class="p-3">Validade / Expiração</th>
-                            <th class="p-3 text-center">Ações Rápidas</th>
+                            <th class="p-3">Estado App</th>
+                            <th class="p-3">Validade</th>
+                            <th class="p-3 text-center">Ações de Atativação</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaUtilizadores" class="divide-y divide-slate-100 text-slate-700">
+                    <tbody id="tabelaUtilizadores" class="divide-y divide-slate-700/60 text-slate-200">
                         <!-- Preenchido via JavaScript -->
                     </tbody>
                 </table>
@@ -87,17 +191,239 @@
     <script>
         let tokenAdmin = "";
         let listaGlobalDispositivos = [];
+        let meusCreditos = 0;
+        let intervaloVerificacaoPixCredito = null;
+        let currentPaymentIdCredito = null;
+        let selectQtdCredito = 0;
+        let selectValorCredito = 0;
 
-        function fazerLogin() {
-            const senha = document.getElementById('senhaAdmin').value.trim();
-            if (!senha) return;
+        window.onload = function() {
+            const tokenSalvo = localStorage.getItem('revendedor_token');
+            if (tokenSalvo) {
+                executarLoginComSenha(tokenSalvo, true);
+            }
+        };
 
-            if (senha === "admin123") {
-                tokenAdmin = senha;
-                document.getElementById('modalLogin').classList.add('hidden');
-                carregarDispositivos();
+        async function fazerLoginRevenda() {
+            const senha = document.getElementById('loginSenha').value.trim();
+            if (!senha) return alert("Introduza a Palavra-Chave.");
+            await executarLoginComSenha(senha, false);
+        }
+
+        async function executarLoginComSenha(senha, ehAutoLogin) {
+            try {
+                const res = await fetch('/api/revenda/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ senha })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    tokenAdmin = senha;
+                    localStorage.setItem('revendedor_token', senha);
+                    meusCreditos = data.revendedor.creditos;
+                    
+                    document.getElementById('nomeRevendedorTitle').innerText = `Painel de Revenda - ${data.revendedor.nome}`;
+                    document.getElementById('mpTokenRevenda').value = data.revendedor.tokenMp || '';
+                    document.getElementById('whatsappRevenda').value = data.revendedor.whatsapp || '';
+                    
+                    const baseUrl = window.location.origin;
+                    document.getElementById('inputLinkCliente').value = `${baseUrl}/?ref=${encodeURIComponent(senha)}`;
+
+                    document.getElementById('modalLogin').classList.add('hidden');
+                    atualizarSaldoCreditosUI();
+                    carregarDispositivos();
+                } else {
+                    localStorage.removeItem('revendedor_token');
+                    if (!ehAutoLogin) alert("❌ Palavra-Chave incorreta!");
+                }
+            } catch (e) {
+                if (!ehAutoLogin) alert("Erro ao conectar com o servidor.");
+            }
+        }
+
+        function fazerLogout() {
+            if (confirm("Deseja sair da conta de revenda?")) {
+                localStorage.removeItem('revendedor_token');
+                location.reload();
+            }
+        }
+
+        function copiarLinkCliente() {
+            const linkInput = document.getElementById('inputLinkCliente');
+            if (!linkInput.value) return;
+            navigator.clipboard.writeText(linkInput.value).then(() => {
+                alert("📋 Link exclusivo copiado! Agora pode enviar ao seu cliente no WhatsApp.");
+            });
+        }
+
+        function atualizarSaldoCreditosUI() {
+            document.getElementById('saldoCreditos').innerText = meusCreditos;
+            const alerta = document.getElementById('alertaCreditosBaixos');
+            if (meusCreditos < 3) {
+                alerta.classList.remove('hidden');
             } else {
-                alert("❌ Palavra-passe incorreta!");
+                alerta.classList.add('hidden');
+            }
+        }
+
+        function abrirModalCreditos() {
+            document.getElementById('modalComprarCreditos').classList.remove('hidden');
+            document.getElementById('selecaoPacotes').classList.remove('hidden');
+            document.getElementById('areaQrCode').classList.add('hidden');
+            document.getElementById('btnAvancarPix').classList.add('hidden');
+            
+            document.querySelectorAll('.btn-pacote').forEach(b => {
+                b.classList.remove('border-emerald-500', 'bg-emerald-950/60', 'text-emerald-300');
+                b.classList.add('bg-slate-800', 'border-slate-700');
+            });
+
+            if (intervaloVerificacaoPixCredito) clearInterval(intervaloVerificacaoPixCredito);
+        }
+
+        function fecharModalCreditos() {
+            document.getElementById('modalComprarCreditos').classList.add('hidden');
+            if (intervaloVerificacaoPixCredito) clearInterval(intervaloVerificacaoPixCredito);
+        }
+
+        function selecionarPacote(qtd, valor, elemento) {
+            selectQtdCredito = qtd;
+            selectValorCredito = valor;
+
+            document.querySelectorAll('.btn-pacote').forEach(b => {
+                b.classList.remove('border-emerald-500', 'bg-emerald-950/60', 'text-emerald-300');
+                b.classList.add('bg-slate-800', 'border-slate-700');
+            });
+
+            elemento.classList.remove('bg-slate-800', 'border-slate-700');
+            elemento.classList.add('border-emerald-500', 'bg-emerald-950/60', 'text-emerald-300');
+
+            document.getElementById('btnAvancarPix').classList.remove('hidden');
+        }
+
+        function abrirModalAvulso() {
+            document.getElementById('inputAvulsoQtd').value = '';
+            document.getElementById('labelTotalAvulso').innerText = 'Total: R$ 0,00';
+            document.getElementById('modalAvulsoCustom').classList.remove('hidden');
+        }
+
+        function fecharModalAvulso() {
+            document.getElementById('modalAvulsoCustom').classList.add('hidden');
+        }
+
+        function calcularTotalAvulsoModal() {
+            const qtd = parseInt(document.getElementById('inputAvulsoQtd').value) || 0;
+            const total = qtd * 5;
+            document.getElementById('labelTotalAvulso').innerText = `Total: R$ ${total.toFixed(2)}`;
+        }
+
+        function confirmarAvulsoCustom() {
+            const qtd = parseInt(document.getElementById('inputAvulsoQtd').value);
+            if (isNaN(qtd) || qtd <= 0) {
+                alert("❌ Por favor, insira uma quantidade válida de créditos.");
+                return;
+            }
+
+            selectQtdCredito = qtd;
+            selectValorCredito = qtd * 5;
+
+            fecharModalAvulso();
+            confirmarCompraPix();
+        }
+
+        async function confirmarCompraPix() {
+            try {
+                const res = await fetch('/api/revenda/comprar-creditos-pix', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenAdmin },
+                    body: JSON.stringify({ qtd: selectQtdCredito, valor: selectValorCredito })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentPaymentIdCredito = data.paymentId;
+                    document.getElementById('selecaoPacotes').classList.add('hidden');
+                    document.getElementById('areaQrCode').classList.remove('hidden');
+                    
+                    document.getElementById('detalheValorPix').innerText = `Comprar ${selectQtdCredito} Crédito(s) • Total: R$ ${selectValorCredito.toFixed(2)}`;
+                    document.getElementById('imgQrCodeCredito').src = `data:image/png;base64,${data.qrCodeBase64}`;
+                    document.getElementById('pixCopiaColaCredito').value = data.qrCodeCopiaCola;
+
+                    if (intervaloVerificacaoPixCredito) clearInterval(intervaloVerificacaoPixCredito);
+                    intervaloVerificacaoPixCredito = setInterval(() => { verificarStatusCreditosPix(); }, 4000);
+                } else {
+                    alert("Erro ao gerar Pix de créditos.");
+                }
+            } catch (e) {
+                alert("Erro ao comunicar com o servidor.");
+            }
+        }
+
+        function verificarStatusCreditosPixManual() {
+            if (currentPaymentIdCredito) {
+                verificarStatusCreditosPix();
+            }
+        }
+
+        async function verificarStatusCreditosPix() {
+            if (!currentPaymentIdCredito) return;
+            try {
+                const res = await fetch('/api/revenda/verificar-creditos-pix', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenAdmin },
+                    body: JSON.stringify({ paymentId: currentPaymentIdCredito, qtd: selectQtdCredito })
+                });
+                const data = await res.json();
+
+                if (data.aprovado) {
+                    clearInterval(intervaloVerificacaoPixCredito);
+                    meusCreditos = data.novoSaldo;
+                    atualizarSaldoCreditosUI();
+                    fecharModalCreditos();
+                    alert(`🎉 Pagamento aprovado! ${selectQtdCredito} créditos foram adicionados ao seu saldo.`);
+                    carregarDispositivos();
+                }
+            } catch (e) {}
+        }
+
+        // FUNÇÃO ATUALIZADA PARA SALVAR O TOKEN MP NO BANCO DE DADOS (SUPABASE)
+        async function salvarTokenMp() {
+            const tokenMp = document.getElementById('mpTokenRevenda').value.trim();
+            try {
+                const res = await fetch('/api/revenda/atualizar-token-mp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenAdmin },
+                    body: JSON.stringify({ tokenMp })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("💾 Token do Mercado Pago guardado com sucesso no banco de dados!");
+                } else {
+                    alert("❌ Erro ao atualizar o Token do Mercado Pago.");
+                }
+            } catch (e) {
+                alert("Erro de conexão ao salvar o Token.");
+            }
+        }
+
+        // FUNÇÃO PARA SALVAR O WHATSAPP DO REVENDEDOR NO BACKEND / BANCO
+        async function salvarWhatsappRevendedor() {
+            const whatsapp = document.getElementById('whatsappRevenda').value.trim();
+            try {
+                const res = await fetch('/api/revenda/atualizar-whatsapp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': tokenAdmin },
+                    body: JSON.stringify({ whatsapp })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert("💾 WhatsApp de suporte atualizado com sucesso! Ele aparecerá automaticamente para os seus clientes.");
+                } else {
+                    alert("❌ Erro ao atualizar o WhatsApp.");
+                }
+            } catch (e) {
+                alert("Erro de conexão ao salvar o WhatsApp.");
             }
         }
 
@@ -114,7 +440,6 @@
                 }
             } catch (e) {
                 console.error(e);
-                alert("Erro ao carregar lista de dispositivos.");
             }
         }
 
@@ -122,28 +447,29 @@
             const tbody = document.getElementById('tabelaUtilizadores');
             tbody.innerHTML = '';
             
-            let ativos = 0;
+            let online = 0;
+            let offline = 0;
             document.getElementById('totalDispositivos').innerText = dispositivos.length;
 
             dispositivos.forEach(item => {
-                if (item.ativo) ativos++;
+                if (item.ativo) online++; else offline++;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="p-3 font-mono text-blue-600">${item.deviceId}</td>
-                    <td class="p-3 font-bold ${item.ativo ? 'text-emerald-600' : 'text-red-600'}">
-                        ${item.statusTexto}
+                    <td class="p-3 font-mono text-blue-400">${item.deviceId}</td>
+                    <td class="p-3 font-bold ${item.ativo ? 'text-emerald-400' : 'text-red-400'}">
+                        <i class="fa-solid fa-circle text-[8px] mr-1"></i> ${item.statusTexto}
                     </td>
-                    <td class="p-3 text-slate-500">${new Date(item.expiracao).toLocaleString('pt-BR')}</td>
+                    <td class="p-3 text-slate-400">${new Date(item.expiracao).toLocaleString('pt-BR')}</td>
                     <td class="p-3 text-center space-x-1">
-                        <button onclick="liberarAcesso('${item.deviceId}', 'teste3h')" class="bg-amber-500 hover:bg-amber-400 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Liberar Teste de 3 Horas">+3h Teste</button>
-                        <button onclick="liberarAcesso('${item.deviceId}', 30)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Liberar +30 Dias">+30 Dias</button>
-                        <button onclick="liberarAcesso('${item.deviceId}', 0)" class="bg-red-500 hover:bg-red-400 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm" title="Bloquear Acesso">Bloquear</button>
+                        <button onclick="liberarAcesso('${item.deviceId}', 30)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm"><i class="fa-solid fa-plus"></i> 30 Dias (1 Crédito)</button>
+                        <button onclick="liberarAcesso('${item.deviceId}', 0)" class="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1.5 rounded-lg text-[11px] font-bold shadow-sm">Bloquear</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
-            document.getElementById('totalAtivos').innerText = ativos;
+            document.getElementById('totalOnline').innerText = online;
+            document.getElementById('totalOffline').innerText = offline;
         }
 
         function filtrarDispositivos() {
@@ -153,6 +479,12 @@
         }
 
         async function liberarAcesso(deviceId, dias) {
+            if (dias > 0 && meusCreditos < 1) {
+                alert("❌ Créditos insuficientes! Recarregue o seu painel.");
+                abrirModalCreditos();
+                return;
+            }
+
             try {
                 const res = await fetch('/api/admin/liberar', {
                     method: 'POST',
@@ -160,13 +492,19 @@
                     body: JSON.stringify({ deviceId, dias })
                 });
                 const data = await res.json();
+
                 if (data.success) {
+                    if (dias > 0) {
+                        meusCreditos -= 1;
+                        atualizarSaldoCreditosUI();
+                    }
+                    alert(`✅ Acesso atualizado para o dispositivo ${deviceId}!`);
                     carregarDispositivos();
                 } else {
-                    alert("Erro ao atualizar acesso.");
+                    alert("Erro ao atualizar o dispositivo.");
                 }
             } catch (e) {
-                console.error(e);
+                alert("Erro de ligação com o servidor.");
             }
         }
     </script>

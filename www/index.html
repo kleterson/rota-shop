@@ -109,7 +109,7 @@
                     <div class="bg-blue-950 border border-blue-800 p-2 rounded-xl">
                         <i class="fa-solid fa-gauge text-blue-400"></i>
                     </div>
-                    <h2 class="text-lg font-bold text-slate-100">Painel Elite</h2>
+                    <h2 class="text-lg font-bold text-slate-100">Painel do Utilizador</h2>
                 </div>
                 <button onclick="toggleMenu()" class="text-slate-400 hover:text-slate-200 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
@@ -134,7 +134,11 @@
                 <a href="#" onclick="toggleMenu();" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-950/60 text-blue-400 font-medium text-sm transition-all border border-blue-900/50"><i class="fa-solid fa-route w-5"></i> Gerir Rotas</a>
                 <a href="#" onclick="iniciarPagamentoPix(); toggleMenu();" class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-amber-400 hover:bg-amber-950/40 font-bold text-sm transition-all border border-amber-900/50"><i class="fa-solid fa-qrcode w-5"></i> Pagar Pix (R$ 20,00)</a>
                 
-                <a href="/downloads/RotaShopee.apk" download="RotaShopee.apk" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 font-bold text-sm transition-all border border-emerald-900/50 shadow-sm mt-2">
+                <a id="linkSuporteMenu" href="https://wa.me/5511920065761?text=Olá,%20preciso%20de%20suporte%20com%20o%20RotaShopee" target="_blank" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 font-bold text-sm transition-all border border-emerald-900/50 shadow-sm">
+                    <i class="fa-brands fa-whatsapp w-5 text-emerald-400 text-base"></i> Suporte WhatsApp
+                </a>
+
+                <a href="/downloads/RotaShopee.apk" download="RotaShopee.apk" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all border border-slate-700 shadow-sm mt-2">
                     <img src="assets/icone.png" alt="App" class="w-5 h-5 object-contain">
                     <span>Baixar App Android</span>
                 </a>
@@ -143,33 +147,47 @@
         <div class="border-t border-slate-800 pt-4 text-xs text-slate-500 text-center">RotaShopee &bull; v2.5 Logística</div>
     </aside>
 
-    <!-- MODAL PIX REAL -->
+    <!-- MODAL PIX DINÂMICO COM SUPORTE A AUSÊNCIA DE QR CODE -->
     <div id="modalPagamento" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[999999] flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl relative text-center text-slate-100">
             <button onclick="fecharModalPagamento()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
             <div class="space-y-1">
                 <h3 class="text-lg font-bold text-slate-100">Pix - R$ 20,00</h3>
-                <p class="text-xs text-slate-400">Faça a leitura do QR Code ou copie o código abaixo.</p>
+                <p id="modalSubtitulo" class="text-xs text-slate-400">Faça a leitura do QR Code ou copie o código abaixo.</p>
             </div>
 
-            <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl inline-block">
-                <img id="imgQrCode" src="" alt="A gerar QR Code..." class="w-44 h-44 mx-auto">
-            </div>
+            <div id="containerAreaPix" class="space-y-4">
+                <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl inline-block">
+                    <img id="imgQrCode" src="" alt="A gerar QR Code..." class="w-44 h-44 mx-auto">
+                </div>
 
-            <div class="space-y-2 text-left">
-                <label class="text-[11px] font-bold text-slate-400 uppercase">Pix Copia e Cola</label>
-                <div class="flex gap-2">
-                    <input type="text" id="pixCopiaCola" readonly class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 w-full font-mono">
-                    <button onclick="copiarPix()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-xl text-xs"><i class="fa-solid fa-copy"></i></button>
+                <div class="space-y-2 text-left">
+                    <label class="text-[11px] font-bold text-slate-400 uppercase">Pix Copia e Cola</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="pixCopiaCola" readonly class="bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-300 w-full font-mono">
+                        <button onclick="copiarPix()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 rounded-xl text-xs"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-slate-800 flex flex-col items-center justify-center gap-2 text-xs text-amber-400 font-medium">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-spinner animate-spin" id="spinnerAguardando"></i>
+                        <span id="statusAguardando">A aguardar confirmação do pagamento...</span>
+                    </div>
+                    <button onclick="verificarStatusPagamentoManual()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md w-full">Já fiz o pagamento</button>
                 </div>
             </div>
 
-            <div class="pt-2 border-t border-slate-800 flex flex-col items-center justify-center gap-2 text-xs text-amber-400 font-medium">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-spinner animate-spin" id="spinnerAguardando"></i>
-                    <span id="statusAguardando">A aguardar confirmação do pagamento...</span>
+            <!-- MENSAGEM CASO O REVENDA NÃO TENHA CADASTRADO O QR CODE AINDA -->
+            <div id="containerAvisoSemRevendedor" class="hidden space-y-4 py-4">
+                <div class="bg-amber-950/40 border border-amber-900/60 p-4 rounded-2xl text-amber-300 text-xs space-y-2">
+                    <i class="fa-solid fa-triangle-exclamation text-xl mb-1"></i>
+                    <p class="font-bold">Pagamento temporariamente ausente</p>
+                    <p class="text-slate-300">O revendedor responsável por este link ainda não configurou o seu QR Code ou Token Pix. Assim que ele o fizer, o código aparecerá automaticamente aqui para si.</p>
                 </div>
-                <button onclick="verificarStatusPagamentoManual()" class="mt-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md w-full">Já fiz o pagamento</button>
+                <a id="linkSuporteAviso" href="https://wa.me/5511920065761?text=Olá,%20meu%20revendedor%20ainda%20não%20configurou%20o%20Pix%20e%20preciso%20de%20ajuda" target="_blank" class="block bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-md transition-all">
+                    <i class="fa-brands fa-whatsapp"></i> Falar com o Suporte
+                </a>
             </div>
         </div>
     </div>
@@ -198,7 +216,12 @@
             <button onclick="copiarIdBloqueio()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded text-[10px] font-bold transition-all"><i class="fa-solid fa-copy"></i> Copiar</button>
         </div>
 
-        <button onclick="iniciarPagamentoPix()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-6 rounded-xl text-xs shadow-md">Pagar Pix Agora</button>
+        <div class="flex gap-2">
+            <button onclick="iniciarPagamentoPix()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-5 rounded-xl text-xs shadow-md">Pagar Pix Agora</button>
+            <a id="linkSuporteBloqueio" href="https://wa.me/5511920065761?text=Olá,%20minha%20licença%20expirou%20e%20preciso%20de%20suporte" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-md flex items-center gap-1.5">
+                <i class="fa-brands fa-whatsapp text-sm"></i> Suporte
+            </a>
+        </div>
     </div>
 
     <!-- PAINEL FLUTUANTE INFERIOR -->
@@ -270,8 +293,20 @@
         let destinos = JSON.parse(localStorage.getItem('rotaShopeeDestinos')) || [];
         let tempoRestanteMsGlobal = 0;
         let intervaloVerificacaoPix = null;
+        
         let deviceId = localStorage.getItem('rotaShopeeDeviceId');
-        if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substring(2, 15); localStorage.setItem('rotaShopeeDeviceId', deviceId); }
+        if (!deviceId) { 
+            deviceId = 'dev_' + Math.random().toString(36).substring(2, 15); 
+            localStorage.setItem('rotaShopeeDeviceId', deviceId); 
+        }
+
+        // Captura o link personalizado do revendedor (ex: ?ref=palavra_chave)
+        const urlParams = new URLSearchParams(window.location.search);
+        const refRevenda = urlParams.get('ref');
+        if (refRevenda) {
+            localStorage.setItem('revendedor_ref', refRevenda);
+        }
+        const refSalva = localStorage.getItem('revendedor_ref') || null;
 
         let rotaGeoJsonSourceId = 'rota-geojson-source';
         let rotaLayerId = 'rota-layer';
@@ -401,15 +436,29 @@
         function iniciarPagamentoPix() {
             abrirModalPagamento();
             document.getElementById('statusAguardando').innerText = "A gerar QR Code Pix...";
+            
+            document.getElementById('containerAreaPix').classList.remove('hidden');
+            document.getElementById('containerAvisoSemRevendedor').classList.add('hidden');
 
             fetch('/api/pagamento/criar-pix', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deviceId })
+                body: JSON.stringify({ deviceId, ref: refSalva })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    if (!data.qrCodeBase64 || data.semRevendedorToken) {
+                        document.getElementById('containerAreaPix').classList.add('hidden');
+                        document.getElementById('containerAvisoSemRevendedor').classList.remove('hidden');
+                        document.getElementById('modalSubtitulo').innerText = "Aviso importante";
+                        return;
+                    }
+
+                    document.getElementById('containerAreaPix').classList.remove('hidden');
+                    document.getElementById('containerAvisoSemRevendedor').classList.add('hidden');
+                    document.getElementById('modalSubtitulo').innerText = "Faça a leitura do QR Code ou copie o código abaixo.";
+                    
                     document.getElementById('imgQrCode').src = `data:image/png;base64,${data.qrCodeBase64}`;
                     document.getElementById('pixCopiaCola').value = data.qrCodeCopiaCola;
                     document.getElementById('statusAguardando').innerText = "A aguardar confirmação do pagamento...";
@@ -418,12 +467,15 @@
                     if (intervaloVerificacaoPix) clearInterval(intervaloVerificacaoPix);
                     intervaloVerificacaoPix = setInterval(() => { verificarStatusPagamento(data.paymentId); }, 4000);
                 } else {
-                    alert("Erro ao gerar Pix.");
+                    document.getElementById('containerAreaPix').classList.add('hidden');
+                    document.getElementById('containerAvisoSemRevendedor').classList.remove('hidden');
+                    document.getElementById('modalSubtitulo').innerText = "Aviso importante";
                 }
             })
             .catch(err => {
                 console.error("Erro na requisição do Pix:", err);
-                alert("Erro de conexão ao gerar o Pix.");
+                document.getElementById('containerAreaPix').classList.add('hidden');
+                document.getElementById('containerAvisoSemRevendedor').classList.remove('hidden');
             });
         }
 
@@ -467,9 +519,20 @@
         async function verificarLicenca() {
             try {
                 const response = await fetch('/api/licenca/verificar', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ deviceId })
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ deviceId, ref: refSalva })
                 });
                 const data = await response.json();
+
+                // ATUALIZA OS LINKS DE SUPORTE AUTOMATICAMENTE COM O WHATSAPP DO REVENDEDOR
+                if (data.whatsapp) {
+                    const zapNum = data.whatsapp;
+                    document.getElementById('linkSuporteMenu').href = `https://wa.me/${zapNum}?text=Olá,%20preciso%20de%20suporte%20com%20o%20RotaShopee`;
+                    document.getElementById('linkSuporteBloqueio').href = `https://wa.me/${zapNum}?text=Olá,%20minha%20licença%20expirou%20e%20preciso%20de%20suporte`;
+                    document.getElementById('linkSuporteAviso').href = `https://wa.me/${zapNum}?text=Olá,%20meu%20revendedor%20ainda%20não%20configurou%20o%20Pix%20e%20preciso%20de%20ajuda`;
+                }
+
                 if (data.status === 'expirado') {
                     document.getElementById('telaBloqueio').classList.remove('hidden');
                     document.getElementById('cronometroDisplay').innerText = "EXPIRADO";
@@ -1056,7 +1119,6 @@
             const inputOrigem = document.getElementById('origemInput');
             inputOrigem.value = "A obter localização...";
             
-            // Solicita permissão nativa do Android via Capacitor Geolocation
             if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
                 try {
                     const permissionStatus = await window.Capacitor.Plugins.Geolocation.requestPermissions();
