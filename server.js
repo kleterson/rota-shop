@@ -96,9 +96,9 @@ app.post('/api/pagamento/criar-pix', async (req, res) => {
         const payment = new Payment(client);
         const body = {
             transaction_amount: 20.00,
-            description: 'RotaFácil - Assinatura Mensal (30 Dias)',
+            description: 'RotaShopee - Assinatura Mensal (30 Dias)',
             payment_method_id: 'pix',
-            payer: { email: 'cliente@rotafacil.com' }
+            payer: { email: 'cliente@rotaShopee.com' }
         };
 
         const response = await payment.create({ body });
