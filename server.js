@@ -100,7 +100,7 @@ app.post('/api/pagamento/criar-pix', async (req, res) => {
             transaction_amount: 20.00,
             description: 'RotaShopee - Assinatura Mensal (30 Dias)',
             payment_method_id: 'pix',
-            payer: { email: 'cliente@rotaShopee.com' }
+            payer: { email: 'cliente@rotashopee.com' }
         };
 
         const response = await payment.create({ body });
@@ -334,7 +334,7 @@ app.post('/api/geocodificar', async (req, res) => {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + ', Brasil')}&limit=1`;
         const response = await fetch(url, {
             headers: { 
-                'User-Agent': 'RotaFacilApp/2.3 (contato@rotafacil.com)' 
+                'User-Agent': 'RotaShopeeApp/2.5 (contato@rotashopee.com)' 
             }
         });
 
@@ -357,5 +357,5 @@ app.post('/api/geocodificar', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor RotaFácil rodando em http://localhost:${PORT}`);
+    console.log(`🚀 Servidor RotaShopee rodando em http://localhost:${PORT}`);
 });

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RotaFácil - Otimizador Estilo Circuit</title>
+    <title>RotaShopee - Otimizador de Rotas</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -135,9 +135,9 @@
                 <a href="#" onclick="iniciarPagamentoPix(); toggleMenu();" class="flex items-center gap-3 px-3.5 py-3 rounded-xl text-amber-400 hover:bg-amber-950/40 font-bold text-sm transition-all border border-amber-900/50"><i class="fa-solid fa-qrcode w-5"></i> Pagar Pix (R$ 20,00)</a>
                 
                 <a href="/downloads/RotaShopee.apk" download="RotaShopee.apk" class="flex items-center gap-3 px-3.5 py-3 rounded-xl bg-emerald-950/60 text-emerald-400 hover:bg-emerald-900/60 font-bold text-sm transition-all border border-emerald-900/50 shadow-sm mt-2">
-    <img src="assets/Icone.png" alt="App" class="w-5 h-5 object-contain">
-    <span>Baixar App Android</span>
-</a>
+                    <img src="assets/Icone.png" alt="App" class="w-5 h-5 object-contain">
+                    <span>Baixar App Android</span>
+                </a>
             </nav>
         </div>
         <div class="border-t border-slate-800 pt-4 text-xs text-slate-500 text-center">RotaShopee &bull; v2.5 Logística</div>
@@ -267,11 +267,11 @@
         let primeiraCentralizacaoGPS = false;
         let contadorMovimentosCarro = 0; 
         let ultimoTempoBuscaRua = 0;
-        let destinos = JSON.parse(localStorage.getItem('rotaFacilDestinos')) || [];
+        let destinos = JSON.parse(localStorage.getItem('rotaShopeeDestinos')) || [];
         let tempoRestanteMsGlobal = 0;
         let intervaloVerificacaoPix = null;
-        let deviceId = localStorage.getItem('rotaFacilDeviceId');
-        if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substring(2, 15); localStorage.setItem('rotaFacilDeviceId', deviceId); }
+        let deviceId = localStorage.getItem('rotaShopeeDeviceId');
+        if (!deviceId) { deviceId = 'dev_' + Math.random().toString(36).substring(2, 15); localStorage.setItem('rotaShopeeDeviceId', deviceId); }
 
         let rotaGeoJsonSourceId = 'rota-geojson-source';
         let rotaLayerId = 'rota-layer';
@@ -283,7 +283,7 @@
             atualizarLista();
             inicializarMapaMapLibre();
             
-            const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+            const savedPaymentId = localStorage.getItem('rotaShopeePaymentId');
             if (savedPaymentId) {
                 abrirModalPagamento();
                 document.getElementById('statusAguardando').innerText = "A verificar pagamento pendente...";
@@ -297,7 +297,7 @@
 
         document.addEventListener("visibilitychange", function() {
             if (!document.hidden) {
-                const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+                const savedPaymentId = localStorage.getItem('rotaShopeePaymentId');
                 if (savedPaymentId) {
                     verificarStatusPagamento(savedPaymentId);
                 }
@@ -387,7 +387,7 @@
             const modal = document.getElementById('modalPagamento');
             modal.classList.add('hidden'); 
             if (intervaloVerificacaoPix) clearInterval(intervaloVerificacaoPix);
-            localStorage.removeItem('rotaFacilPaymentId');
+            localStorage.removeItem('rotaShopeePaymentId');
         }
 
         function copiarPix() {
@@ -413,7 +413,7 @@
                     document.getElementById('imgQrCode').src = `data:image/png;base64,${data.qrCodeBase64}`;
                     document.getElementById('pixCopiaCola').value = data.qrCodeCopiaCola;
                     document.getElementById('statusAguardando').innerText = "A aguardar confirmação do pagamento...";
-                    localStorage.setItem('rotaFacilPaymentId', data.paymentId);
+                    localStorage.setItem('rotaShopeePaymentId', data.paymentId);
 
                     if (intervaloVerificacaoPix) clearInterval(intervaloVerificacaoPix);
                     intervaloVerificacaoPix = setInterval(() => { verificarStatusPagamento(data.paymentId); }, 4000);
@@ -428,7 +428,7 @@
         }
 
         function verificarStatusPagamentoManual() {
-            const savedPaymentId = localStorage.getItem('rotaFacilPaymentId');
+            const savedPaymentId = localStorage.getItem('rotaShopeePaymentId');
             if (savedPaymentId) {
                 document.getElementById('statusAguardando').innerText = "A verificar pagamento...";
                 verificarStatusPagamento(savedPaymentId);
@@ -448,7 +448,7 @@
             .then(data => {
                 if (data.aprovado) {
                     clearInterval(intervaloVerificacaoPix);
-                    localStorage.removeItem('rotaFacilPaymentId');
+                    localStorage.removeItem('rotaShopeePaymentId');
                     
                     document.getElementById('statusAguardando').innerHTML = `<span class="text-emerald-400 font-bold">🎉 Pagamento Aprovado! A ativar 30 dias...</span>`;
                     const spinner = document.getElementById('spinnerAguardando');
@@ -493,7 +493,7 @@
             document.getElementById('cronometroDisplay').innerText = texto;
         }
 
-        function salvarDados() { localStorage.setItem('rotaFacilDestinos', JSON.stringify(destinos)); }
+        function salvarDados() { localStorage.setItem('rotaShopeeDestinos', JSON.stringify(destinos)); }
 
         function ouvirVoz(inputId, btnElement) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
