@@ -1052,10 +1052,24 @@
             }
         }
 
-        function usarLocalizacaoAtual() {
+        async function usarLocalizacaoAtual() {
             const inputOrigem = document.getElementById('origemInput');
             inputOrigem.value = "A obter localização...";
             
+            // Solicita permissão nativa do Android via Capacitor Geolocation
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation) {
+                try {
+                    const permissionStatus = await window.Capacitor.Plugins.Geolocation.requestPermissions();
+                    if (permissionStatus.location !== 'granted' && permissionStatus.coarseLocation !== 'granted') {
+                        alert("É necessário permitir o acesso à localização nas configurações do seu telemóvel para usar o GPS.");
+                        inputOrigem.value = "";
+                        return;
+                    }
+                } catch (e) {
+                    console.log("A aguardar permissão do navegador/WebView...", e);
+                }
+            }
+
             if (navigator.geolocation) {
                 if (watchId !== null) {
                     navigator.geolocation.clearWatch(watchId);
@@ -1109,7 +1123,7 @@
                         } catch (e) {}
                     }
                 }, (err) => {
-                    alert("Erro ao aceder ao GPS em tempo real.");
+                    alert("Erro ao aceder ao GPS em tempo real. Verifique se a localização está ligada.");
                     inputOrigem.value = "";
                 }, {
                     enableHighAccuracy: true,
