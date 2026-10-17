@@ -39,7 +39,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// 1. Verificar Status da Licença no Supabase (com suporte a link de indicação e WhatsApp do revendedor)
+// 1. Verificar Status da Licença no Supabase (com suporte dinâmico a WhatsApp do revendedor)
 app.post('/api/licenca/verificar', async (req, res) => {
     const { deviceId, ref } = req.body;
     if (!deviceId) return res.status(400).json({ error: 'ID obrigatório.' });
@@ -83,14 +83,19 @@ app.post('/api/licenca/verificar', async (req, res) => {
             }
         }
 
-        // Busca o WhatsApp do revendedor vinculado, se houver
-        let whatsappRevendedor = "5511920065761"; // padrão caso não tenha revenda
+        // Lógica de busca do WhatsApp (Sem fallback fixo antigo para revendedores)
+        let whatsappRevendedor = null;
         let targetRevId = licenca.revendedor_id || revendedorId;
+
         if (targetRevId) {
+            // Se for cliente de um revendedor, busca APENAS o WhatsApp que ele cadastrou
             let { data: revData } = await supabase.from('revendedores').select('whatsapp').eq('id', targetRevId).single();
-            if (revData && revData.whatsapp) {
+            if (revData && revData.whatsapp && revData.whatsapp.trim().length > 0) {
                 whatsappRevendedor = revData.whatsapp.replace(/\D/g, '');
             }
+        } else {
+            // Se for Cliente Direto do Master, usa o suporte padrão do Master
+            whatsappRevendedor = "5511920065761";
         }
 
         const expiraEm = new Date(licenca.expiracao);
@@ -434,7 +439,6 @@ app.get('/api/master/revendas', async (req, res) => {
     }
 });
 
-// Rota corrigida e segura para o Master ver TODOS os clientes finais do sistema
 app.get('/api/master/clientes', async (req, res) => {
     const senha = req.headers['authorization'];
     if (senha !== 'master123') return res.status(401).json({ success: false, message: 'Não autorizado' });
