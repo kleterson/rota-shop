@@ -300,13 +300,14 @@
             localStorage.setItem('rotaShopeeDeviceId', deviceId); 
         }
 
-        // Captura o link personalizado do revendedor (ex: ?ref=palavra_chave)
+        // CAPTURA E SALVA O REF PERMANENTEMENTE NO TELEMÓVEL PARA NÃO PERDER AO ABRIR O APP NATIVO
         const urlParams = new URLSearchParams(window.location.search);
-        const refRevenda = urlParams.get('ref');
-        if (refRevenda) {
-            localStorage.setItem('revendedor_ref', refRevenda);
+        let refParam = urlParams.get('ref');
+        if (refParam) {
+            localStorage.setItem('revendedor_ref', refParam);
+        } else {
+            refParam = localStorage.getItem('revendedor_ref') || null;
         }
-        const refSalva = localStorage.getItem('revendedor_ref') || null;
 
         let rotaGeoJsonSourceId = 'rota-geojson-source';
         let rotaLayerId = 'rota-layer';
@@ -443,7 +444,7 @@
             fetch('/api/pagamento/criar-pix', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deviceId, ref: refSalva })
+                body: JSON.stringify({ deviceId, ref: refParam })
             })
             .then(res => res.json())
             .then(data => {
@@ -521,7 +522,7 @@
                 const response = await fetch('/api/licenca/verificar', {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ deviceId, ref: refSalva })
+                    body: JSON.stringify({ deviceId, ref: refParam })
                 });
                 const data = await response.json();
 
